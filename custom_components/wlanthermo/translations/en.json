@@ -1,0 +1,70 @@
+{
+  "title": "WLANThermo BBQ Integration",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configure WLANThermo BBQ",
+        "description": "Enter connection details for your WLANThermo BBQ device.",
+        "data": {
+          "device_name": "Device Name",
+          "host": "Host / IP Address",
+          "port": "Port",
+          "path_prefix": "Path Prefix",
+          "show_inactive_unavailable": "Show inactive sensors as unavailable",
+          "auth_required": "Authentication required",
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "required": "This field is required."
+    },
+    "system_online": {
+    "0": "Not connected",
+    "1": "Standby",
+    "2": "Connected"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "WLANThermo BBQ Options",
+        "data": {
+          "device_name": "Device Name",
+          "host": "Host / IP Address",
+          "port": "Port",
+          "path_prefix": "Path Prefix",
+          "show_inactive_unavailable": "Show inactive sensors as unavailable",
+          "auth_required": "Authentication required",
+          "username": "Username",
+          "password": "Password",
+          "scan_interval": "Scan Interval (seconds)"
+        }
+      }
+    }
+  },
+    "alarm": {
+    "off": "Off",
+    "push": "Push",
+    "buzzer": "Buzzer",
+    "push_buzzer": "Push + Buzzer"
+  },
+  "entity": {
+    "sensor": {
+      "battery_charging": {"name": "Battery Charging"},
+      "battery_level": {"name": "Battery Level"},
+      "temperature_unit": {"name": "Temperature Unit"},
+      "cloud_status": {"name": "Cloud status"},
+      "channel": {"name": "Channel"},
+      "channel_temperature": {"name": "Channel {channel_number} Temperature"},
+      "channel_time_left": {"name": "Channel {channel_number} Time Left"},
+      "system_time": {"name": "System Time"},
+      "device_info": {"name": "Device Info"},
+      "channel_entity": {"name": "Channel {channel_number} {field_name}"},
+      "pitmaster_value": {"name": "Pitmaster {pitmaster_id} Value"},
+      "min_temperature": {"name": "Min Temperature"},
+      "max_temperature": {"name": "Max Temperature"}
+    }
+  }
+}

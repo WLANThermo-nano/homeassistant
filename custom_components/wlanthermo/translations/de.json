@@ -1,0 +1,67 @@
+{
+  "title": "WLANThermo BBQ Integration",
+  "config": {
+    "step": {
+      "user": {
+        "title": "WLANThermo BBQ konfigurieren",
+        "description": "Geben Sie die Verbindungsdaten für Ihr WLANThermo BBQ Gerät ein.",
+        "data": {
+          "device_name": "Gerätename",
+          "host": "Host / IP-Adresse",
+          "port": "Port",
+          "path_prefix": "Pfad-Präfix",
+          "show_inactive_unavailable": "Inaktive Sensoren als nicht verfügbar anzeigen",
+          "auth_required": "Authentifizierung erforderlich",
+          "username": "Benutzername",
+          "password": "Passwort"
+        }
+      }
+    },
+    "error": {
+      "required": "Dieses Feld ist erforderlich."
+    },
+    "system_online": {
+      "0": "Nicht verbunden",
+      "1": "Standby",
+      "2": "Verbunden"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "WLANThermo BBQ Optionen",
+        "data": {
+          "device_name": "Gerätename",
+          "host": "Host / IP-Adresse",
+          "port": "Port",
+          "path_prefix": "Pfad-Präfix",
+          "show_inactive_unavailable": "Inaktive Sensoren als nicht verfügbar anzeigen",
+          "auth_required": "Authentifizierung erforderlich",
+          "username": "Benutzername",
+          "password": "Passwort",
+          "scan_interval": "Abfrage-Intervall (Sekunden)"
+        }
+      }
+    }
+  }, 
+    "alarm": {
+    "off": "Aus",
+    "push": "Push",
+    "buzzer": "Signalton",
+    "push_buzzer": "Push + Signalton"
+  },
+  "entity": {
+    "sensor": {
+      "battery_charging": {"name": "Ladevorgang Batterie"},
+      "battery_level": {"name": "Batteriestand"},
+      "temperature_unit": {"name": "Temperatureinheit"},
+      "cloud_status": {"name": "Cloud-Status"},
+      "channel": {"name": "Kanal"},
+      "channel_temperature": {"name": "Kanal {channel_number} Temperatur"},
+      "channel_time_left": {"name": "Kanal {channel_number} Restzeit"},
+      "system_time": {"name": "System Zeit"},
+      "device_info": {"name": "Geräte Info"},
+      "channel_entity": {"name": "Kanal {channel_number} {field_name}"}
+    }
+  }
+}
