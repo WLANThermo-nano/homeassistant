@@ -14,7 +14,7 @@ from homeassistant.helpers.selector  import (
     BooleanSelector,
 )
 import aiohttp
-from .api import WlanthermoBBQApi
+from .api import WLANThermoApi
 from .data import SettingsData
 
 CONF_PATH_PREFIX = "path_prefix"
@@ -54,7 +54,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Define the schema for the user form
         base_schema = {
-            vol.Required("device_name", default="WLANThermo BBQ"): str,
+            vol.Required("device_name", default="WLANThermo"): str,
             vol.Required(CONF_HOST): str,
             vol.Required(CONF_PORT, default=80): int,
             vol.Required(CONF_PATH_PREFIX, default="/"): str,
@@ -95,7 +95,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """
         Return the options flow handler for this config entry.
         """
-        return WlanthermoBBQOptionsFlow(config_entry)
+        return WLANThermoOptionsFlow(config_entry)
 
     async def async_step_device_info(self, user_input=None):
         """
@@ -104,13 +104,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """
         # Get user_input from context
         user_input = self.context.get("user_input")
-        device_name = user_input.get("device_name", "WLANThermo BBQ")
+        device_name = user_input.get("device_name", "WLANThermo")
         host = user_input[CONF_HOST]
         port = user_input[CONF_PORT]
         path_prefix = user_input[CONF_PATH_PREFIX]
         # Fetch /settings from the device to verify connection and get info
         async with aiohttp.ClientSession() as session:
-            api = WlanthermoBBQApi(host, port, path_prefix)
+            api = WLANThermoApi(host, port, path_prefix)
             api.set_session(session)
             settings_json = await api.get_settings()
         if not settings_json:
@@ -154,7 +154,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Create the config entry
         return self.async_create_entry(title=device_name, data=user_input)
 
-class WlanthermoBBQOptionsFlow(config_entries.OptionsFlow):
+class WLANThermoOptionsFlow(config_entries.OptionsFlow):
     """
     Handle the options flow for WLANThermo.
     Allows users to update connection and polling options after setup.
@@ -257,7 +257,7 @@ class WlanthermoBBQOptionsFlow(config_entries.OptionsFlow):
         path_prefix = user_input[CONF_PATH_PREFIX]
         # Fetch /settings from the device
         async with aiohttp.ClientSession() as session:
-            api = WlanthermoBBQApi(host, port, path_prefix)
+            api = WLANThermoApi(host, port, path_prefix)
             api.set_session(session)
             settings_json = await api.get_settings()
         if not settings_json:
@@ -296,4 +296,4 @@ class WlanthermoBBQOptionsFlow(config_entries.OptionsFlow):
         """
         Return the options flow handler for this config entry.
         """
-        return WlanthermoBBQOptionsFlow(config_entry)
+        return WLANThermoOptionsFlow(config_entry)

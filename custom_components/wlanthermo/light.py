@@ -33,10 +33,10 @@ class WlanthermoChannelColorLight(CoordinatorEntity, LightEntity):
             hass = getattr(coordinator, "hass", None)
             if hass and entry_id:
                 device_name = hass.data[DOMAIN][entry_id]["device_info"].get(
-                    "name", "WLANThermo_BBQ"
+                    "name", "WLANThermo"
                 )
             else:
-                device_name = "WLANThermo_BBQ"
+                device_name = "WLANThermo"
 
         safe_device_name = device_name.replace(" ", "_").lower()
 

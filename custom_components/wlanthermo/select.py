@@ -80,14 +80,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                 sensor_types.append(name)
                 sensor_type_map[name] = idx
         except Exception as e:
-            _LOGGER.error(f"WLANThermoBBQ: Failed to extract sensor type names as objects: {e}. Trying dict fallback.")
+            _LOGGER.error(f"WLANThermo: Failed to extract sensor type names as objects: {e}. Trying dict fallback.")
             # fallback if sensors is a list of dicts
             for i, s in enumerate(settings.sensors):
                 name = s.get('name', f"Typ {i}")
                 sensor_types.append(name)
                 sensor_type_map[name] = i
     if not sensor_types:
-        _LOGGER.error("WLANThermoBBQ: No sensor types found in settings.sensors. Using fallback types.")
+        _LOGGER.error("WLANThermo: No sensor types found in settings.sensors. Using fallback types.")
         sensor_types = ["Typ 0", "Typ 1", "Typ 2"]
         sensor_type_map = {name: i for i, name in enumerate(sensor_types)}
 
@@ -162,9 +162,9 @@ class WlanthermoChannelSelect(CoordinatorEntity, SelectEntity):
             entry_id = getattr(coordinator, 'config_entry', None).entry_id if hasattr(coordinator, 'config_entry') else None
             hass = getattr(coordinator, 'hass', None)
             if hass and entry_id:
-                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo_BBQ")
+                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo")
             else:
-                device_name = "WLANThermo_BBQ"
+                device_name = "WLANThermo"
         safe_device_name = device_name.replace(" ", "_").lower()
         self._attr_name = f"{device_name} Channel {channel.number} {field['name']}"
         self._attr_unique_id = f"{safe_device_name}_channel_{channel.number}_{field['key']}"
@@ -274,9 +274,9 @@ class WlanthermoPitmasterSelect(CoordinatorEntity, SelectEntity):
             entry_id = getattr(coordinator, 'config_entry', None).entry_id if hasattr(coordinator, 'config_entry') else None
             hass = getattr(coordinator, 'hass', None)
             if hass and entry_id:
-                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo_BBQ")
+                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo")
             else:
-                device_name = "WLANThermo_BBQ"
+                device_name = "WLANThermo"
         safe_device_name = device_name.replace(" ", "_").lower()
         self._attr_name = f"{device_name} Pitmaster {pitmaster.id + 1} {field['name']}"
         self._attr_unique_id = f"{safe_device_name}_pitmaster_{pitmaster.id}_{field['key']}"

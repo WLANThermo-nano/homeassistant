@@ -1,6 +1,6 @@
 """
 API client for WLANThermo device.
-Provides asynchronous methods to interact with the BBQ device's REST API.
+Provides asynchronous methods to interact with the WLANThermo device's REST API.
 Handles data retrieval and configuration updates for channels and pitmasters.
 """
 
@@ -8,7 +8,7 @@ import aiohttp
 import async_timeout
 
 
-class WlanthermoBBQApi:
+class WLANThermoApi:
     """
     Asynchronous API client for WLANThermo device.
     Handles HTTP communication for data and configuration endpoints.
@@ -44,14 +44,14 @@ class WlanthermoBBQApi:
         _LOGGER = logging.getLogger(__name__)
         url = f"{self._base_url}{endpoint}"
         if self._session is None:
-            raise RuntimeError("Session not set for WlanthermoBBQApi")
+            raise RuntimeError("Session not set for WLANThermoApi")
         try:
             async with async_timeout.timeout(10):
                 async with self._session.get(url) as resp:
                     resp.raise_for_status()
                     return await resp.json()
         except Exception as err:
-            _LOGGER.error(f"WLANThermoBBQApi: Error fetching {url}: {err}")
+            _LOGGER.error(f"WLANThermoApi: Error fetching {url}: {err}")
             return None
 
 
@@ -86,7 +86,7 @@ class WlanthermoBBQApi:
         import logging
         _LOGGER = logging.getLogger(__name__)
         if self._session is None:
-            raise RuntimeError("Session not set for WlanthermoBBQApi")
+            raise RuntimeError("Session not set for WLANThermoApi")
         url = f"{self._base_url}/setchannels"
         headers = {"Content-Type": "application/json"}
         # Add authentication if needed (e.g., token)
@@ -120,7 +120,7 @@ class WlanthermoBBQApi:
         import logging
         _LOGGER = logging.getLogger(__name__)
         if self._session is None:
-            raise RuntimeError("Session not set for WlanthermoBBQApi")
+            raise RuntimeError("Session not set for WLANThermoApi")
         url = f"{self._base_url}/setpitmaster"
         headers = {"Content-Type": "application/json"}
         # Add authentication if needed (e.g., token)

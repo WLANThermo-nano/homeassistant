@@ -9,7 +9,7 @@ from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers import aiohttp_client
 
 from .const import DOMAIN, CONF_PATH_PREFIX, CONF_MODEL
-from .api import WlanthermoBBQApi
+from .api import WLANThermoApi
 from .data import WlanthermoData
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from datetime import timedelta
@@ -32,10 +32,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 	# Create aiohttp session and API instance
 	session = aiohttp_client.async_get_clientsession(hass)
-	api = WlanthermoBBQApi(host, port, path_prefix)
+	api = WLANThermoApi(host, port, path_prefix)
 	api.set_session(session)
 
-	device_name = entry.data.get("device_name", "WLANThermo BBQ")
+	device_name = entry.data.get("device_name", "WLANThermo")
 	host = entry.data.get("host")
 	path_prefix = entry.data.get("path_prefix", "/")
 	device_info = {}
@@ -50,7 +50,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 				api.settings = settings
 			except Exception as e:
 				import logging
-				logging.getLogger(__name__).error(f"WLANThermoBBQ: Failed to parse /settings JSON: {e}")
+				logging.getLogger(__name__).error(f"WLANThermo: Failed to parse /settings JSON: {e}")
 		if settings and hasattr(settings, "device"):
 			dev = settings.device
 			# Compose a descriptive model string from device attributes
@@ -99,7 +99,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 				return WlanthermoData(raw)
 			except Exception as exc:
 				last_exc = exc
-				_LOGGER.warning(f"WLANThermo BBQ: Error fetching /data (attempt {attempt}): {exc}")
+				_LOGGER.warning(f"WLANThermo: Error fetching /data (attempt {attempt}): {exc}")
 				await asyncio.sleep(2 * attempt)  # Exponential backoff
 		raise last_exc or Exception("Unknown error fetching /data")
 

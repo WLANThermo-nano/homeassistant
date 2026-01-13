@@ -1,10 +1,10 @@
 {
-  "title": "WLANThermo BBQ Integration",
+  "title": "WLANThermo Integration",
   "config": {
     "step": {
       "user": {
-        "title": "WLANThermo BBQ konfigurieren",
-        "description": "Geben Sie die Verbindungsdaten für Ihr WLANThermo BBQ Gerät ein.",
+        "title": "WLANThermo konfigurieren",
+        "description": "Geben Sie die Verbindungsdaten für Ihr WLANThermo Gerät ein.",
         "data": {
           "device_name": "Gerätename",
           "host": "Host / IP-Adresse",
@@ -29,7 +29,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "WLANThermo BBQ Optionen",
+        "title": "WLANThermo Optionen",
         "data": {
           "host": "Host / IP-Adresse",
           "port": "Port",

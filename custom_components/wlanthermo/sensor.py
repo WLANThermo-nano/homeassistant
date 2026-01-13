@@ -33,9 +33,9 @@ class WlanthermoChannelTemperatureSensor(CoordinatorEntity, SensorEntity):
             entry_id = getattr(coordinator, 'config_entry', None).entry_id if hasattr(coordinator, 'config_entry') else None
             hass = getattr(coordinator, 'hass', None)
             if hass and entry_id:
-                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo_BBQ")
+                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo")
             else:
-                device_name = "WLANThermo_BBQ"
+                device_name = "WLANThermo"
         safe_device_name = device_name.replace(" ", "_").lower()
         self._attr_has_entity_name = True
         self._attr_translation_key = "channel_temperature"
@@ -127,9 +127,9 @@ class WlanthermoChannelTimeLeftSensor(CoordinatorEntity, SensorEntity):
             entry_id = getattr(coordinator, 'config_entry', None).entry_id if hasattr(coordinator, 'config_entry') else None
             hass = getattr(coordinator, 'hass', None)
             if hass and entry_id:
-                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo_BBQ")
+                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo")
             else:
-                device_name = "WLANThermo_BBQ"
+                device_name = "WLANThermo"
         safe_device_name = device_name.replace(" ", "_").lower()
         self._attr_has_entity_name = True
         self._attr_translation_key = "channel_time_left"

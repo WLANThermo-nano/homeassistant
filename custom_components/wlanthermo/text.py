@@ -35,9 +35,9 @@ class WlanthermoChannelColorText(CoordinatorEntity, TextEntity):
             entry_id = getattr(coordinator, 'config_entry', None).entry_id if hasattr(coordinator, 'config_entry') else None
             hass = getattr(coordinator, 'hass', None)
             if hass and entry_id:
-                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo_BBQ")
+                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo")
             else:
-                device_name = "WLANThermo_BBQ"
+                device_name = "WLANThermo"
         safe_device_name = device_name.replace(" ", "_").lower()
         self._attr_name = f"{device_name} Channel {channel.number} Color"
         self._attr_unique_id = f"{safe_device_name}_channel_{channel.number}_color"
@@ -91,9 +91,9 @@ class WlanthermoChannelNameText(CoordinatorEntity, TextEntity):
             entry_id = getattr(coordinator, 'config_entry', None).entry_id if hasattr(coordinator, 'config_entry') else None
             hass = getattr(coordinator, 'hass', None)
             if hass and entry_id:
-                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo_BBQ")
+                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo")
             else:
-                device_name = "WLANThermo_BBQ"
+                device_name = "WLANThermo"
         safe_device_name = device_name.replace(" ", "_").lower()
         self._attr_name = f"{device_name} Channel {channel.number} Name"
         self._attr_unique_id = f"{safe_device_name}_channel_{channel.number}_name"
