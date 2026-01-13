@@ -1,3 +1,7 @@
+"""
+Home Assistant integration for WLANThermodevices.
+Handles setup, teardown, and data coordination for the integration.
+"""
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
@@ -13,13 +17,20 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+	"""
+	Set up a WLANThermo integration entry.
+	Initializes API, fetches device info, sets up data coordinator, and forwards platforms.
+	"""
+	# Retrieve connection and configuration options
 	host = entry.options.get("host", entry.data.get("host"))
 	port = entry.options.get("port", entry.data.get("port", 80))
 	path_prefix = entry.data.get("path_prefix", "/")
 	scan_interval = entry.options.get("scan_interval", 10)
 	model = entry.data.get("model", "select")
 
+	# Create aiohttp session and API instance
 	session = aiohttp_client.async_get_clientsession(hass)
 	api = WlanthermoBBQApi(host, port, path_prefix)
 	api.set_session(session)
@@ -30,6 +41,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 	device_info = {}
 	from .data import SettingsData
 	try:
+		# Attempt to fetch and parse device settings for richer device info
 		settings_json = await api.get_settings()
 		settings = None
 		if settings_json:
@@ -41,7 +53,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 				logging.getLogger(__name__).error(f"WLANThermoBBQ: Failed to parse /settings JSON: {e}")
 		if settings and hasattr(settings, "device"):
 			dev = settings.device
-			# Compose a descriptive model string
+			# Compose a descriptive model string from device attributes
 			model_str = f"{getattr(dev, 'device', 'unknown')} {getattr(dev, 'hw_version', '')} {getattr(dev, 'cpu', '')}".strip()
 			device_info = {
 				"identifiers": {(DOMAIN, dev.serial or host)},
@@ -51,6 +63,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 				"sw_version": getattr(dev, "sw_version", "unknown"),
 			}
 		else:
+			# Fallback if device info is incomplete
 			model_str = f"{getattr(dev, 'device', 'unknown')} {getattr(dev, 'hw_version', '')} {getattr(dev, 'cpu', '')}".strip()
 			device_info = {
 				"identifiers": {(DOMAIN, host)},
@@ -60,6 +73,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 				"sw_version": "unknown",
 			}
 	except Exception:
+		# Fallback if settings fetch or parse fails
 		device_info = {
 			"identifiers": {(DOMAIN, host)},
 			"name": device_name,
@@ -69,7 +83,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 		}
 
 	import asyncio
+
 	async def async_update_data():
+		"""
+		Fetches the latest data from the device, with retry and exponential backoff.
+		Returns a Wlanthermo Data object or raises the last exception on failure.
+		"""
 		max_retries = 3
 		last_exc = None
 		for attempt in range(1, max_retries + 1):
@@ -85,18 +104,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 		raise last_exc or Exception("Unknown error fetching /data")
 
 	class DebugDataUpdateCoordinator(DataUpdateCoordinator):
+		"""
+		Custom DataUpdateCoordinator for debugging and extension.
+		"""
 		async def _handle_coordinator_update(self) -> None:
 			await super()._handle_coordinator_update()
 
+	# Set up the coordinator to periodically fetch data
 	coordinator = DebugDataUpdateCoordinator(
 		hass,
 		_LOGGER,
-		name="WLANThermo BBQ Data",
+		name="WLANThermoData",
 		update_method=async_update_data,
 		update_interval=timedelta(seconds=scan_interval),
 	)
 	await coordinator.async_refresh()
 
+	# Store all relevant objects in hass.data for access by platforms
 	entry_data = {
 		"api": api,
 		"scan_interval": scan_interval,
@@ -107,14 +131,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 	}
 	hass.data.setdefault(DOMAIN, {})[entry.entry_id] = entry_data
 
+	# List of Home Assistant platforms to set up
 	platforms = ["sensor", "number", "select", "text", "light"]
 	await hass.config_entries.async_forward_entry_setups(entry, platforms)
 	entry_data["platforms_setup"].update(platforms)
 	return True
 
+
+# Unload the integration and all platforms
 import asyncio
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+	"""
+	Unload a WLANThermointegration entry and all associated platforms.
+	Cleans up hass.data and returns True if all platforms unloaded successfully.
+	"""
 	platforms = ["sensor", "number", "select", "text", "light"]
 	results = await asyncio.gather(
 		*(hass.config_entries.async_forward_entry_unload(entry, platform) for platform in platforms)

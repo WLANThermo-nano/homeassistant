@@ -1,4 +1,8 @@
-"""Text platform for WLANThermo BBQ adjustable channel name."""
+"""
+Text platform for WLANThermo.
+Provides Home Assistant text entities for adjustable channel name and color.
+Allows users to view and (for name) set channel names and view channel color as hex.
+"""
 
 from homeassistant.components.text import TextEntity
 from homeassistant.helpers.entity import EntityCategory
@@ -8,6 +12,9 @@ from .const import DOMAIN
 HEX_PATTERN = r"^#[0-9A-Fa-f]{6}$"
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
+    """
+    Set up text entities for each channel (color and name) for WLANThermo.
+    """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
     entities = []
     for channel in coordinator.data.channels:
@@ -16,6 +23,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(entities)
 
 class WlanthermoChannelColorText(CoordinatorEntity, TextEntity):
+    """
+    Text entity for displaying the color of a channel as a hex string (read-only).
+    """
     def __init__(self, coordinator, channel):
         super().__init__(coordinator)
         self._coordinator = coordinator
@@ -40,6 +50,9 @@ class WlanthermoChannelColorText(CoordinatorEntity, TextEntity):
         self._attr_read_only = True
 
     def _get_channel(self):
+        """
+        Helper to get the current channel object from the coordinator data.
+        """
         channels = getattr(self._coordinator.data, 'channels', [])
         for ch in channels:
             if ch.number == self._channel_number:
@@ -48,6 +61,9 @@ class WlanthermoChannelColorText(CoordinatorEntity, TextEntity):
 
     @property
     def device_info(self):
+        """
+        Return device info for Home Assistant device registry.
+        """
         entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
         hass = getattr(self.coordinator, 'hass', None)
         if hass and entry_id:
@@ -56,10 +72,16 @@ class WlanthermoChannelColorText(CoordinatorEntity, TextEntity):
 
     @property
     def native_value(self):
+        """
+        Return the current color of the channel as a hex string.
+        """
         channel = self._get_channel()
         return getattr(channel, "color", "#000000") if channel else "#000000"
 
 class WlanthermoChannelNameText(CoordinatorEntity, TextEntity):
+    """
+    Text entity for displaying and setting the name of a channel.
+    """
     def __init__(self, coordinator, channel):
         super().__init__(coordinator)
         self._coordinator = coordinator
@@ -81,6 +103,9 @@ class WlanthermoChannelNameText(CoordinatorEntity, TextEntity):
         self._attr_entity_category = EntityCategory.CONFIG
 
     def _get_channel(self):
+        """
+        Helper to get the current channel object from the coordinator data.
+        """
         channels = getattr(self._coordinator.data, 'channels', [])
         for ch in channels:
             if ch.number == self._channel_number:
@@ -89,6 +114,9 @@ class WlanthermoChannelNameText(CoordinatorEntity, TextEntity):
 
     @property
     def device_info(self):
+        """
+        Return device info for Home Assistant device registry.
+        """
         entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
         hass = getattr(self.coordinator, 'hass', None)
         if hass and entry_id:
@@ -97,10 +125,16 @@ class WlanthermoChannelNameText(CoordinatorEntity, TextEntity):
 
     @property
     def native_value(self):
+        """
+        Return the current name of the channel.
+        """
         channel = self._get_channel()
         return channel.name if channel and hasattr(channel, 'name') else f"Channel {self._channel_number}"
 
     async def async_set_value(self, value: str):
+        """
+        Set a new name for the channel and update the device via the API.
+        """
         api = self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id]["api"]
         channel = self._get_channel()
         if not channel:

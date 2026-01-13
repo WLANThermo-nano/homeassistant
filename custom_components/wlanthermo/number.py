@@ -1,4 +1,7 @@
-"""Number platform for WLANThermo BBQ adjustable values."""
+"""
+Number platform for WLANThermo adjustable values.
+Exposes min/max temperature and pitmaster values as Home Assistant number entities.
+"""
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.helpers.entity import EntityCategory
@@ -6,6 +9,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 
 CHANNEL_NUMBER_FIELDS = [
+    # Defines which channel fields are exposed as number entities
     {
         "key": "min",
         "name": "Min Temperature",
@@ -27,6 +31,7 @@ CHANNEL_NUMBER_FIELDS = [
 ]
 
 PITMASTER_NUMBER_FIELDS = [
+    # Defines which pitmaster fields are exposed as number entities
     {
         "key": "value",
         "name": "Pitmaster Value",
@@ -48,6 +53,9 @@ PITMASTER_NUMBER_FIELDS = [
 ]
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
+    """
+    Set up number entities for each channel and pitmaster in the config entry.
+    """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
     entities = []
     # Channel numbers
@@ -61,10 +69,15 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     async_add_entities(entities)
 
 class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
+    """
+    Number entity for a channel's min/max temperature.
+    Allows user to set min/max values for each channel.
+    """
     def __init__(self, coordinator, channel, field):
         super().__init__(coordinator)
         self._channel_number = channel.number
         self._field = field
+        # Try to get a friendly device name from the coordinator or fallback
         device_name = getattr(coordinator, 'device_name', None)
         if not device_name:
             entry_id = getattr(coordinator, 'config_entry', None).entry_id if hasattr(coordinator, 'config_entry') else None
@@ -86,6 +99,9 @@ class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
 
     @property
     def device_info(self):
+        """
+        Return device info for Home Assistant device registry.
+        """
         entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
         hass = getattr(self.coordinator, 'hass', None)
         if hass and entry_id:
@@ -93,6 +109,9 @@ class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
         return None
 
     def _get_channel(self):
+        """
+        Helper to get the current channel object from the coordinator data.
+        """
         channels = getattr(self.coordinator.data, 'channels', [])
         for ch in channels:
             if ch.number == self._channel_number:
@@ -101,10 +120,16 @@ class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
 
     @property
     def native_value(self):
+        """
+        Return the current value of the field for this channel.
+        """
         channel = self._get_channel()
         return getattr(channel, self._field["key"], None) if channel else None
 
     async def async_set_native_value(self, value):
+        """
+        Set the value for this channel field and update via API.
+        """
         import logging
         _LOGGER = logging.getLogger(__name__)
         channel = self._get_channel()
@@ -128,10 +153,15 @@ class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
         await self.coordinator.async_request_refresh()
 
 class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
+    """
+    Number entity for a pitmaster's value or set temperature.
+    Allows user to set pitmaster output or setpoint.
+    """
     def __init__(self, coordinator, pitmaster, field):
         super().__init__(coordinator)
         self._pitmaster_id = pitmaster.id
         self._field = field
+        # Try to get a friendly device name from the coordinator or fallback
         device_name = getattr(coordinator, 'device_name', None)
         if not device_name:
             entry_id = getattr(coordinator, 'config_entry', None).entry_id if hasattr(coordinator, 'config_entry') else None
@@ -153,6 +183,9 @@ class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
 
     @property
     def device_info(self):
+        """
+        Return device info for Home Assistant device registry.
+        """
         entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
         hass = getattr(self.coordinator, 'hass', None)
         if hass and entry_id:
@@ -160,6 +193,9 @@ class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
         return None
 
     def _get_pitmaster(self):
+        """
+        Helper to get the current pitmaster object from the coordinator data.
+        """
         pitmasters = getattr(self.coordinator.data, 'pitmasters', [])
         for pm in pitmasters:
             if pm.id == self._pitmaster_id:
@@ -168,10 +204,16 @@ class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
 
     @property
     def native_value(self):
+        """
+        Return the current value of the field for this pitmaster.
+        """
         pitmaster = self._get_pitmaster()
         return getattr(pitmaster, self._field["key"], None) if pitmaster else None
 
     async def async_set_native_value(self, value):
+        """
+        Set the value for this pitmaster field and update via API.
+        """
         import logging
         _LOGGER = logging.getLogger(__name__)
         pitmaster = self._get_pitmaster()

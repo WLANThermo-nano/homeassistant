@@ -1,6 +1,16 @@
+
+"""
+Data models for WLANThermo integration.
+Defines Python classes for parsing and representing /data and /settings API responses.
+"""
+
 from typing import Any, Dict, List, Optional
 
 class WlanthermoData:
+    """
+    Container for parsed /data endpoint response.
+    Holds lists of Channel and Pitmaster objects, and system info.
+    """
     def __init__(self, raw: Dict[str, Any]):
         # Always create new objects for each update to ensure sensors update
         import copy
@@ -8,19 +18,27 @@ class WlanthermoData:
         self.pitmasters = [Pitmaster(copy.deepcopy(p)) for p in raw.get("pitmaster", {}).get("pm", [])]
         self.system = SystemInfo(copy.deepcopy(raw.get("system", {})))
         
-"""Data models for WLANThermo BBQ /data endpoint."""
+"""Data models for WLANThermo /data endpoint."""
 from typing import Any, Dict, List, Optional
 
 class SystemInfo:
+    """
+    System status info from /data endpoint.
+    Includes time, unit, battery, and connection status.
+    """
     def __init__(self, data: Dict[str, Any]):
         self.time: int = int(data.get("time", 0))
         self.unit: str = str(data.get("unit", "C"))
-        self.soc: Optional[int] = int(data["soc"]) if "soc" in data else None
-        self.charge: Optional[bool] = bool(data["charge"]) if "charge" in data else None
-        self.rssi: int = int(data.get("rssi", 0))
+        self.soc: Optional[int] = int(data["soc"]) if "soc" in data else None  # State of charge
+        self.charge: Optional[bool] = bool(data["charge"]) if "charge" in data else None  # Charging status
+        self.rssi: int = int(data.get("rssi", 0))  # WiFi signal
         self.online: int = int(data.get("online", 0))
 
 class Channel:
+    """
+    Represents a single measurement channel (sensor input).
+    Includes temperature, alarm, and connection info.
+    """
     def __init__(self, data: Dict[str, Any]):
         self.number: int = int(data.get("number", 0))
         self.name: str = str(data.get("name", ""))
@@ -34,6 +52,9 @@ class Channel:
         self.connected: bool = bool(data.get("connected", False))
 
 class Pitmaster:
+    """
+    Represents a pitmaster (fan/servo controller) configuration and status.
+    """
     def __init__(self, data: Dict[str, Any]):
         self.id: int = int(data.get("id", 0))
         self.channel: int = int(data.get("channel", 0))
@@ -45,11 +66,18 @@ class Pitmaster:
         self.value_color: str = str(data.get("value_color", "#000000"))
 
 class PitmasterType:
+    """
+    Represents available pitmaster types (e.g., off, fan, servo).
+    """
     def __init__(self, types: List[str]):
         self.types = types
 
 # --- /settings models ---
 class DeviceInfo:
+    """
+    Device information from /settings endpoint.
+    Includes hardware, firmware, and identification info.
+    """
     def __init__(self, data: Dict[str, Any]):
         self.device: str = str(data.get("device", ""))
         self.serial: str = str(data.get("serial", ""))
@@ -61,6 +89,10 @@ class DeviceInfo:
         self.language: str = str(data.get("language", ""))
 
 class SystemSettings:
+    """
+    System settings from /settings endpoint.
+    Includes network, language, and version info.
+    """
     def __init__(self, data: Dict[str, Any]):
         self.time: int = int(data.get("time", 0))
         self.unit: str = str(data.get("unit", "C"))
@@ -72,17 +104,27 @@ class SystemSettings:
         self.hwversion: str = str(data.get("hwversion", ""))
 
 class SensorType:
+    """
+    Represents a sensor type (probe type) from /settings.
+    """
     def __init__(self, data: Dict[str, Any]):
         self.type: int = int(data.get("type", 0))
         self.name: str = str(data.get("name", ""))
         self.fixed: bool = bool(data.get("fixed", False))
 
 class FeatureSet:
+    """
+    Features supported by the device (e.g., Bluetooth, pitmaster).
+    """
     def __init__(self, data: Dict[str, Any]):
         self.bluetooth: bool = bool(data.get("bluetooth", False))
         self.pitmaster: bool = bool(data.get("pitmaster", False))
 
 class PIDConfig:
+    """
+    PID controller configuration from /settings.
+    Includes tuning parameters and actuator info.
+    """
     def __init__(self, data: Dict[str, Any]):
         self.name: str = str(data.get("name", ""))
         self.id: int = int(data.get("id", 0))
@@ -100,11 +142,17 @@ class PIDConfig:
         self.jp: int = int(data.get("jp", 0))
 
 class DisplayInfo:
+    """
+    Display settings from /settings endpoint.
+    """
     def __init__(self, data: Dict[str, Any]):
         self.updname: str = str(data.get("updname", ""))
         self.orientation: int = int(data.get("orientation", 0))
 
 class IotSettings:
+    """
+    IoT cloud integration settings from /settings endpoint.
+    """
     def __init__(self, data: Dict[str, Any]):
         self.CLon: bool = bool(data.get("CLon", False))
         self.CLtoken: str = str(data.get("CLtoken", ""))
@@ -113,6 +161,9 @@ class IotSettings:
         self.CLlink: str = str(data.get("CLurl", "")) + "?api_token=" + str(data.get("CLtoken", ""))
 
 class NotesExt:
+    """
+    Extended notification settings (e.g., push services).
+    """
     def __init__(self, data: Dict[str, Any]):
         self.on: int = int(data.get("on", 0))
         self.token: str = str(data.get("token", ""))
@@ -122,11 +173,18 @@ class NotesExt:
         self.services: list = data.get("services", [])
 
 class Notes:
+    """
+    Notification settings (e.g., FCM, push).
+    """
     def __init__(self, data: Dict[str, Any]):
         self.fcm: list = data.get("fcm", [])
         self.ext: NotesExt = NotesExt(data.get("ext", {}))
 
 class SettingsData:
+    """
+    Container for parsed /settings endpoint response.
+    Holds device info, system settings, features, sensors, PID configs, etc.
+    """
     def __init__(self, raw: Dict[str, Any]):
         self.device = DeviceInfo(raw.get("device", {}))
         self.system = SystemSettings(raw.get("system", {}))
@@ -142,4 +200,7 @@ class SettingsData:
 
     @classmethod
     def from_json(cls, data: Dict[str, Any]) -> "SettingsData":
+        """
+        Parse a JSON dict into a SettingsData object.
+        """
         return cls(data)

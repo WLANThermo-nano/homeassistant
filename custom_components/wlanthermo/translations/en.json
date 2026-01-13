@@ -31,7 +31,6 @@
       "init": {
         "title": "WLANThermo BBQ Options",
         "data": {
-          "device_name": "Device Name",
           "host": "Host / IP Address",
           "port": "Port",
           "path_prefix": "Path Prefix",
