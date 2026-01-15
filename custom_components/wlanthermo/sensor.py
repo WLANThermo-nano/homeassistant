@@ -751,6 +751,8 @@ class WlanthermoSystemOnlineSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def state(self):
+        if not self.available:
+            return "Not connected"
         system = self._sys
         value = getattr(system, "online", None) if system else None
 

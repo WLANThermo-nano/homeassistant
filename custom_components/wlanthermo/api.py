@@ -33,32 +33,27 @@ class WLANThermoApi:
         _LOGGER = logging.getLogger(__name__)
         url = f"{self._base_url}{endpoint}"
 
-        # Ensure session exists
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession()
+        session = async_get_clientsession(self._hass)
 
         try:
             async with async_timeout.timeout(10):
-                async with self._session.get(url, allow_redirects=True) as resp:
+                async with session.get(url, allow_redirects=True) as resp:
                     if resp.status != 200:
-                        _LOGGER.debug(f"WLANThermoApi: HTTP {resp.status} for {url}")
                         return None
 
                     try:
-                        return await resp.json()
+                        data = await resp.json()
+                        return data
                     except Exception as json_err:
-                        _LOGGER.debug(f"WLANThermoApi: JSON decode error for {url}: {json_err}")
+                        _LOGGER.error(f"WLANThermoApi: JSON decode error for {url}: {json_err} <-2")
                         return None
 
         except Exception as err:
-            _LOGGER.debug(f"WLANThermoApi: Error fetching {url}: {err}")
+            _LOGGER.error(f"WLANThermoApi: Error fetching {url}: {err} <-3")
             return None
 
+
     async def get_data(self):
-        """
-        Fetch current measurement and channel data from the device.
-        :return: JSON data or None
-        """
         return await self._get("/data")
 
     async def get_settings(self):

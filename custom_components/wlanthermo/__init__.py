@@ -39,19 +39,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 	device_info = {}
 	from .data import SettingsData
 	try:
-		# Attempt to fetch and parse device settings for richer device info
-		settings_json = await api.get_settings()
+		# First check if device is online
+		probe = await api.get_data()
+
+		settings_json = None
 		settings = None
-		if settings_json:
+
+		if probe:
+			# Device is online → safe to fetch settings
 			try:
-				settings = SettingsData.from_json(settings_json)
-				api.settings = settings
+				settings_json = await api.get_settings()
+				if settings_json:
+					settings = SettingsData.from_json(settings_json)
+					api.settings = settings
 			except Exception as e:
-				import logging
-				logging.getLogger(__name__).error(f"WLANThermo: Failed to parse /settings JSON: {e}")
+				_LOGGER.error(f"WLANThermo: Failed to fetch /settings: {e}")
+
+		# Build device_info
 		if settings and hasattr(settings, "device"):
 			dev = settings.device
-			# Compose a descriptive model string from device attributes
 			model_str = f"{getattr(dev, 'device', 'unknown')} {getattr(dev, 'hw_version', '')} {getattr(dev, 'cpu', '')}".strip()
 			device_info = {
 				"identifiers": {(DOMAIN, dev.serial or host)},
@@ -61,23 +67,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 				"sw_version": getattr(dev, "sw_version", "unknown"),
 			}
 		else:
-			# Fallback if device info is incomplete
-			model_str = f"{getattr(dev, 'device', 'unknown')} {getattr(dev, 'hw_version', '')} {getattr(dev, 'cpu', '')}".strip()
 			device_info = {
 				"identifiers": {(DOMAIN, host)},
 				"name": device_name,
 				"manufacturer": "WLANThermo",
-				"model": model_str,
+				"model": "unknown",
 				"sw_version": "unknown",
 			}
+
 	except Exception:
-		# Fallback if settings fetch or parse fails
 		device_info = {
 			"identifiers": {(DOMAIN, host)},
 			"name": device_name,
 			"manufacturer": "WLANThermo",
 			"sw_version": "unknown",
 		}
+
 
 	import asyncio
 
@@ -89,8 +94,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 		try:
 			raw_data = await api.get_data()
 			if not raw_data:
-				_LOGGER.debug("WLANThermo: Device offline (no /data)")
-				return None
+				raise UpdateFailed("WLANThermo: /data returned no data")
 
 			# Try to load settings
 			try:
@@ -100,28 +104,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 			except Exception:
 				_LOGGER.debug("WLANThermo: Device offline (no /settings)")
 
-			return WlanthermoData(raw_data)
+			return  WlanthermoData(raw_data)
+
 
 		except Exception as exc:
-			_LOGGER.debug(f"WLANThermo: Device offline: {exc}")
-			return None
+			raise UpdateFailed(f"WLANThermo offline: {exc}")
 
-	class DebugDataUpdateCoordinator(DataUpdateCoordinator):
+	class UpdateCoordinator(DataUpdateCoordinator):
+		pass
 		"""
-		Custom DataUpdateCoordinator for debugging and extension.
+		Custom UpdateCoordinator for debugging and extension.
 		"""
-		async def _handle_coordinator_update(self) -> None:
-			await super()._handle_coordinator_update()
+		#async def _handle_coordinator_update(self) -> None:
+		#	await super()._handle_coordinator_update()
+
 
 	# Set up the coordinator to periodically fetch data
-	coordinator = DebugDataUpdateCoordinator(
+	coordinator = UpdateCoordinator(
 		hass,
 		_LOGGER,
 		name="WLANThermoData",
 		update_method=async_update_data,
 		update_interval=timedelta(seconds=scan_interval),
 	)
-	await coordinator.async_refresh()
+#	await coordinator.async_config_entry_first_refresh()
+	hass.async_create_task(coordinator.async_refresh())
 
 	# Prepare entry_data early so listener can use it
 	entry_data = {
@@ -137,9 +144,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
 	# If device is offline at setup → do NOT load platforms
 	if not coordinator.last_update_success:
-		_LOGGER.warning(
-			"WLANThermo: Device offline during setup. Platforms will load when device becomes available."
-		)
 
 		async def _async_start_platforms():
 			if coordinator.last_update_success and not entry_data["platforms_setup"]:
@@ -147,11 +151,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 				entry_data["platforms_setup"].update(platforms)
 
 		coordinator.async_add_listener(_async_start_platforms)
-		return True
-
-	# Device was online → load platforms immediately
-	await hass.config_entries.async_forward_entry_setups(entry, platforms)
-	entry_data["platforms_setup"].update(platforms)
+	else:
+		# Device was online → load platforms immediately
+		await hass.config_entries.async_forward_entry_setups(entry, platforms)
+		entry_data["platforms_setup"].update(platforms)
 
 	return True
 
