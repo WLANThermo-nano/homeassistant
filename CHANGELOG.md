@@ -1,6 +1,11 @@
 
 # Changelog
 
+## [0.1.4] - 2026-01-16
+
+### Added
+- Dashboard to Display all sensors 
+
 ## [0.1.3] - 2026-01-15
 
 ### Fixed
