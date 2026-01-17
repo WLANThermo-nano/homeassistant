@@ -1155,8 +1155,8 @@ class WlanthermoPitmasterTemperatureSensor(CoordinatorEntity, SensorEntity):
     """
     def __init__(self, coordinator, pitmaster, device_name):
         super().__init__(coordinator)
-        self._pitmaster_channel = pitmaster.channel
         self._attr_name = f"Pitmaster {pitmaster.id} Temperature"
+        self._pitmaster_channel = pitmaster.channel 
         self._attr_unique_id = f"{device_name}_pitmaster_{pitmaster.id}_temperature"
         self.entity_id = f"sensor.{device_name}_pitmaster_{pitmaster.id}_temperature"
         self._attr_icon = "mdi:thermometer"
@@ -1166,9 +1166,20 @@ class WlanthermoPitmasterTemperatureSensor(CoordinatorEntity, SensorEntity):
         """
         Helper to get the channel object associated with the pitmaster.
         """
+        
+        # get latest pitmasters from coordinator data
+        pitmasters = getattr(self.coordinator.data, 'pitmasters', [])
+        pitmaster = next((pm for pm in pitmasters if pm.id == self._pitmaster_id), None)
+        if not pitmaster:
+            return None
+
+        target_channel_number = getattr(pitmaster, "channel", None)
+        if target_channel_number is None:
+            return None
+
         channels = getattr(self.coordinator.data, 'channels', [])
         for channel in channels:
-            if channel.number == self._pitmaster_channel:
+            if channel.number == target_channel_number:
                 return channel
         return None
 
