@@ -1155,9 +1155,8 @@ class WlanthermoPitmasterTemperatureSensor(CoordinatorEntity, SensorEntity):
     """
     def __init__(self, coordinator, pitmaster, device_name):
         super().__init__(coordinator)
-        # store pitmaster id (not the channel number) so we always resolve the current channel on each update
-        self._pitmaster_id = pitmaster.id
         self._attr_name = f"Pitmaster {pitmaster.id} Temperature"
+        self._pitmaster_channel = pitmaster.channel 
         self._attr_unique_id = f"{device_name}_pitmaster_{pitmaster.id}_temperature"
         self.entity_id = f"sensor.{device_name}_pitmaster_{pitmaster.id}_temperature"
         self._attr_icon = "mdi:thermometer"
@@ -1166,10 +1165,6 @@ class WlanthermoPitmasterTemperatureSensor(CoordinatorEntity, SensorEntity):
     def _get_channel(self):
         """
         Helper to get the channel object associated with the pitmaster.
-        Resolve the current channel object associated with this pitmaster.
-         - First find the current pitmaster object from coordinator.data.pitmasters by id
-         - Then use its channel number to find the matching channel in coordinator.data.channels
-        This way the mapping is up-to-date after each GET /data refresh.
         """
         
         # get latest pitmasters from coordinator data
@@ -1193,7 +1188,6 @@ class WlanthermoPitmasterTemperatureSensor(CoordinatorEntity, SensorEntity):
         """
         Return device info for Home Assistant device registry.
         """
-        # Return device info for Home Assistant device registry.
         entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
         hass = getattr(self.coordinator, 'hass', None)
         if hass and entry_id:
