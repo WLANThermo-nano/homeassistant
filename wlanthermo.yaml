@@ -13,16 +13,41 @@ button_card_templates:
         return "Kanal " + id + "  " + temp;
       ]]]
     custom_fields:
-      restzeit: | 
+      restzeit: |
         [[[ 
           const id = entity.entity_id.match(/channel_(\d+)_/)[1];
           const dev = variables.device_name;
           const tl = states[`sensor.${dev}_channel_${id}_timeleft`];
           return tl.state != 0 ? `Restzeit: ${tl.state}` : "Restzeit: ~ ";
         ]]]
+      minmax: |
+        [[[
+          const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+          const dev = variables.device_name;
+          const min = states[`number.${dev}_channel_${id}_min`]?.state;
+          const max = states[`number.${dev}_channel_${id}_max`]?.state;
+          return `
+            <div style="
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              width:100%;
+              font-size:13px;
+            ">
+              <span style="display:flex; align-items:center; gap:4px;">
+                <ha-icon icon="mdi:chevron-down"style="--mdc-icon-size:14px;"></ha-icon>
+                ${min}°C
+              </span>
+              <span style="display:flex; align-items:center; gap:4px;">
+                <ha-icon icon="mdi:chevron-up"style="--mdc-icon-size:14px;"></ha-icon>
+                ${max}°C
+              </span>
+            </div>
+          `;
+        ]]]
     styles:
       grid:
-        - grid-template-areas: '"i n" "i restzeit"'
+        - grid-template-areas: '"i n" "i minmax" "i restzeit"'
         - grid-template-columns: 30px 1fr
         - grid-template-rows: auto auto
         - row-gap: 2px
@@ -32,20 +57,34 @@ button_card_templates:
         - border-radius: 12px
         - background-color: |
             [[[
-              return entity && entity.state !== 'unavailable'
-                ? 'rgba(0,150,0,0.3)'
-                : 'rgba(150,0,0,0.3)';
+              const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+              const dev = variables.device_name;
+
+              const temp = parseFloat(states[`sensor.${dev}_channel_${id}_temperatur`]?.state);
+              const max  = parseFloat(states[`number.${dev}_channel_${id}_max`]?.state);
+
+              if (isNaN(temp) || isNaN(max)) {
+                return "rgba(250,250,0,0.3)";  // fallback bei fehlenden Werten
+              }
+
+              return temp < max
+                ? "rgba(0,150,0,0.3)"   // grün
+                : "rgba(150,0,0,0.3)";  // rot
             ]]]
       name:
         - font-size: 14px
         - font-weight: bold
-        - grid-area: n
+        - grid-area: 'n'
         - align-self: end
       custom_fields:
         restzeit:
           - font-size: 12px
           - grid-area: restzeit
           - align-self: start
+        minmax:
+          - grid-area: minmax
+          - align-self: start
+          - font-size: 12px
       icon:
         - width: 22px
         - height: 22px
@@ -125,16 +164,36 @@ button_card_templates:
         return "Pitmaster " + (id + 1) + "  " + temp;
       ]]]
     custom_fields:
-      restzeit: | 
+      restzeit: |
         [[[ 
           const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
           const dev = variables.device_name;
           const tl = states[`sensor.${dev}_pitmaster_${id}_value`];
           return tl.state != 0 ? `Geschwindigkeit: ${tl.state} %` : "Geschwindigkeit: ~ ";
         ]]]
+      max: |
+        [[[
+          const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
+          const dev = variables.device_name;
+          const max = states[`number.${dev}_pitmaster_${id}_set`]?.state;
+          return `
+            <div style="
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              width:100%;
+              font-size:13px;
+            ">
+              <span style="display:flex; align-items:center; gap:4px;">
+                <ha-icon icon="mdi:chevron-up"style="--mdc-icon-size:14px;"></ha-icon>
+                ${max}°C
+              </span>
+            </div>
+          `;
+        ]]]
     styles:
       grid:
-        - grid-template-areas: '"i n" "i restzeit"'
+        - grid-template-areas: '"i n" "i max" "i restzeit"'
         - grid-template-columns: 30px 1fr
         - grid-template-rows: auto auto
         - row-gap: 2px
@@ -151,12 +210,17 @@ button_card_templates:
       name:
         - font-size: 14px
         - font-weight: bold
-        - grid-area: n
+        - grid-area: 'n'
         - align-self: end
       custom_fields:
         restzeit:
           - font-size: 12px
           - grid-area: restzeit
+          - align-self: start
+        max:
+          - font-size: 12px
+          - grid-area: max
+          - justify-self: end
           - align-self: start
       icon:
         - width: 22px
@@ -365,7 +429,7 @@ views:
                                 {% endif %};
                             }
                       - type: custom:mushroom-entity-card
-                        entity: sensor.wlanthermo_cloud_url
+                        entity: sensor.wlanthermo_cloud_link
                         name: Cloud URL
                         icon: mdi:web
                         card_mod:
@@ -374,7 +438,7 @@ views:
                               border-radius: 12px;
                               padding: 8px;
                               background-color:
-                                {% set v = states('sensor.wlanthermo_cloud_url') %}
+                                {% set v = states('sensor.wlanthermo_cloud_link') %}
                                 {% if v and v != 'unavailable' %}
                                   rgba(0,200,0,0.3)
                                 {% else %}
@@ -422,25 +486,24 @@ views:
                   opposite: false
             filter:
               exclude:
-                  - state: unavailable
-                  - state: unknown
+                - state: unavailable
+                - state: unknown
               include:
                 - entity_id: sensor.wlanthermo_pitmaster_*_value
-                  options: 
+                  options:
                     yaxis_id: '1'
                     stroke_width: 1
                     type: area
                     opacity: 0.25
                     curve: stepline
                 - entity_id: sensor.wlanthermo_pitmaster_*_temperatur
-                  options: 
+                  options:
                     yaxis_id: '0'
                     stroke_width: 1
                 - entity_id: sensor.wlanthermo_channel_*_temperatur
-                  options: 
+                  options:
                     yaxis_id: '0'
                     stroke_width: 3
             sort:
               method: entity_id
             card_param: series
-
