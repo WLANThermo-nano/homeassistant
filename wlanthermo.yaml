@@ -1,0 +1,446 @@
+button_card_templates:
+  wlt_channel_button:
+    variables:
+      device_name: wlanthermo
+    show_icon: true
+    show_name: true
+    show_state: false
+    icon: mdi:thermometer
+    name: |
+      [[[
+        const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+        const temp = entity.state !== 'unavailable' ? entity.state + "°C" : "N/A";
+        return "Kanal " + id + "  " + temp;
+      ]]]
+    custom_fields:
+      restzeit: | 
+        [[[ 
+          const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+          const dev = variables.device_name;
+          const tl = states[`sensor.${dev}_channel_${id}_timeleft`];
+          return tl.state != 0 ? `Restzeit: ${tl.state}` : "Restzeit: ~ ";
+        ]]]
+    styles:
+      grid:
+        - grid-template-areas: '"i n" "i restzeit"'
+        - grid-template-columns: 30px 1fr
+        - grid-template-rows: auto auto
+        - row-gap: 2px
+      card:
+        - padding: 4px
+        - height: 70px
+        - border-radius: 12px
+        - background-color: |
+            [[[
+              return entity && entity.state !== 'unavailable'
+                ? 'rgba(0,150,0,0.3)'
+                : 'rgba(150,0,0,0.3)';
+            ]]]
+      name:
+        - font-size: 14px
+        - font-weight: bold
+        - grid-area: n
+        - align-self: end
+      custom_fields:
+        restzeit:
+          - font-size: 12px
+          - grid-area: restzeit
+          - align-self: start
+      icon:
+        - width: 22px
+        - height: 22px
+        - grid-area: i
+        - align-self: center
+    tap_action:
+      action: call-service
+      service: browser_mod.popup
+      data:
+        title: |
+          [[[
+            const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+            return "Kanal " + id;
+          ]]]
+        content:
+          type: entities
+          entities:
+            - |
+              [[[
+                const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+                const dev = variables.device_name;
+                return `sensor.${dev}_channel_${id}_temperatur`;
+              ]]]
+            - |
+              [[[
+                const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+                const dev = variables.device_name;
+                return `sensor.${dev}_channel_${id}_timeleft`;
+              ]]]
+            - |
+              [[[
+                const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+                const dev = variables.device_name;
+                return `text.${dev}_channel_${id}_name`;
+              ]]]
+            - |
+              [[[
+                const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+                const dev = variables.device_name;
+                return `number.${dev}_channel_${id}_min`;
+              ]]]
+            - |
+              [[[
+                const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+                const dev = variables.device_name;
+                return `number.${dev}_channel_${id}_max`;
+              ]]]
+            - |
+              [[[
+                const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+                const dev = variables.device_name;
+                return `select.${dev}_channel_${id}_alarm`;
+              ]]]
+            - |
+              [[[
+                const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+                const dev = variables.device_name;
+                return `light.${dev}_channel_${id}_color`;
+              ]]]
+            - |
+              [[[
+                const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+                const dev = variables.device_name;
+                return `select.${dev}_channel_${id}_typ`;
+              ]]]
+  wlt_pitmaster_button:
+    show_icon: true
+    show_name: true
+    show_state: false
+    icon: mdi:thermometer
+    variables:
+      device_name: wlanthermo
+    name: |
+      [[[
+        const id = parseInt(entity.entity_id.match(/pitmaster_(\d+)_/)[1]);
+        const temp = entity.state !== 'unavailable' ? entity.state + "°C" : "N/A";
+        return "Pitmaster " + (id + 1) + "  " + temp;
+      ]]]
+    custom_fields:
+      restzeit: | 
+        [[[ 
+          const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
+          const dev = variables.device_name;
+          const tl = states[`sensor.${dev}_pitmaster_${id}_value`];
+          return tl.state != 0 ? `Geschwindigkeit: ${tl.state} %` : "Geschwindigkeit: ~ ";
+        ]]]
+    styles:
+      grid:
+        - grid-template-areas: '"i n" "i restzeit"'
+        - grid-template-columns: 30px 1fr
+        - grid-template-rows: auto auto
+        - row-gap: 2px
+      card:
+        - padding: 4px
+        - height: 70px
+        - border-radius: 12px
+        - background-color: |
+            [[[
+              return entity && entity.state !== 'unavailable'
+                ? 'rgba(0,150,0,0.3)'
+                : 'rgba(150,0,0,0.3)';
+            ]]]
+      name:
+        - font-size: 14px
+        - font-weight: bold
+        - grid-area: n
+        - align-self: end
+      custom_fields:
+        restzeit:
+          - font-size: 12px
+          - grid-area: restzeit
+          - align-self: start
+      icon:
+        - width: 22px
+        - height: 22px
+        - grid-area: i
+        - align-self: center
+    tap_action:
+      action: call-service
+      service: browser_mod.popup
+      data:
+        title: |
+          [[[
+            const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
+            return "Pitmaster " + id;
+          ]]]
+        content:
+          type: entities
+          entities:
+            - |
+              [[[
+                const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
+                const dev = variables.device_name;
+                return `number.${dev}_pitmaster_${id}_value`;
+              ]]]
+            - |
+              [[[
+                const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
+                const dev = variables.device_name;
+                return `number.${dev}_pitmaster_${id}_set`;
+              ]]]
+            - |
+              [[[
+                const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
+                const dev = variables.device_name;
+                return `select.${dev}_pitmaster_${id}_channel`;
+              ]]]
+            - |
+              [[[
+                const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
+                const dev = variables.device_name;
+                return `select.${dev}_pitmaster_${id}_pid`;
+              ]]]
+            - |
+              [[[
+                const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
+                const dev = variables.device_name;
+                return `select.${dev}_pitmaster_${id}_typ`;
+              ]]]
+views:
+  - title: WLANThermo
+    path: wlanthermo
+    type: panel
+    cards:
+      - type: grid
+        columns: 1
+        square: false
+        cards:
+          - type: custom:auto-entities
+            card:
+              type: grid
+              columns: 8
+              square: false
+            filter:
+              include:
+                - entity_id: sensor.wlanthermo_channel_*_temperatur
+                  options:
+                    type: custom:button-card
+                    template: wlt_channel_button
+              exclude:
+                - state: unavailable
+                - state: unknown
+            sort:
+              method: entity_id
+            card_param: cards
+          - type: grid
+            columns: 2
+            square: false
+            cards:
+              - type: grid
+                columns: 1
+                square: false
+                cards:
+                  - type: custom:auto-entities
+                    card:
+                      type: history-graph
+                      hours_to_show: 1
+                      fit_y_data: false
+                      min_y_axis: 10
+                      max_y_axis: 100
+                    filter:
+                      include:
+                        - entity_id: sensor.wlanthermo_channel_*_temperatur
+                      exclude:
+                        - state: unavailable
+                        - state: unknown
+                    sort:
+                      method: entity_id
+                    card_param: entities
+              - type: grid
+                columns: 1
+                square: false
+                cards:
+                  - type: custom:auto-entities
+                    card:
+                      type: grid
+                      columns: 2
+                      square: false
+                    filter:
+                      include:
+                        - entity_id: sensor.wlanthermo_pitmaster_*_temperature
+                          options:
+                            type: custom:button-card
+                            template: wlt_pitmaster_button
+                      exclude:
+                        - state: unavailable
+                        - state: unknown
+                    sort:
+                      method: entity_id
+                    card_param: cards
+                  - type: grid
+                    columns: 4
+                    square: false
+                    cards:
+                      - type: custom:mushroom-entity-card
+                        entity: sensor.wlanthermo_system_soc
+                        name: Akku %
+                        icon: mdi:battery
+                        card_mod:
+                          style: |
+                            ha-card {
+                              border-radius: 12px;
+                              padding: 8px;
+                              background-color:
+                                {% set v = states('sensor.wlanthermo_system_soc') | int %}
+                                {% if v > 60 %}
+                                  rgba(0,200,0,0.3)
+                                {% elif v > 30 %}
+                                  rgba(255,200,0,0.3)
+                                {% else %}
+                                  rgba(200,0,0,0.3)
+                                {% endif %};
+                            }
+                      - type: custom:mushroom-entity-card
+                        entity: sensor.wlanthermo_system_rssi
+                        name: WLAN Signal
+                        icon: mdi:wifi
+                        card_mod:
+                          style: |
+                            ha-card {
+                              border-radius: 12px;
+                              padding: 8px;
+                              background-color:
+                                {% set v = states('sensor.wlanthermo_system_rssi') | int %}
+                                {% if v > -60 %}
+                                  rgba(0,200,0,0.3)
+                                {% elif v > -75 %}
+                                  rgba(255,200,0,0.3)
+                                {% else %}
+                                  rgba(200,0,0,0.3)
+                                {% endif %};
+                            }
+                      - type: custom:mushroom-entity-card
+                        entity: sensor.wlanthermo_system_online
+                        name: Online
+                        icon: mdi:cloud
+                        card_mod:
+                          style: |
+                            ha-card {
+                              border-radius: 12px;
+                              padding: 8px;
+                              background-color:
+                                {% set v = states('sensor.wlanthermo_system_online') %}
+                                {% if v == 'Verbunden' or v == 'Connected' %}
+                                  rgba(0,200,0,0.3)
+                                {% elif v == 'Standby' %}
+                                  rgba(255,200,0,0.3)
+                                {% else %}
+                                  rgba(200,0,0,0.3)
+                                {% endif %};
+                            }
+                      - type: custom:mushroom-entity-card
+                        entity: sensor.wlanthermo_system_unit
+                        name: Einheit
+                        icon: mdi:scale
+                        card_mod:
+                          style: |
+                            ha-card {
+                              border-radius: 12px;
+                              padding: 8px;
+                            }
+                      - type: custom:mushroom-entity-card
+                        entity: sensor.wlanthermo_system_charge
+                        name: Ladung
+                        icon: mdi:power-plug
+                        card_mod:
+                          style: |
+                            ha-card {
+                              border-radius: 12px;
+                              padding: 8px;
+                              background-color:
+                                {% set v = states('sensor.wlanthermo_system_charge') %}
+                                {% if v in ['true','on','online','connected','True','1'] %}
+                                  rgba(0,200,0,0.3)
+                                {% else %}
+                                  rgba(200,200,0,0.3)
+                                {% endif %};
+                            }
+                      - type: custom:mushroom-entity-card
+                        entity: sensor.wlanthermo_cloud_url
+                        name: Cloud URL
+                        icon: mdi:web
+                        card_mod:
+                          style: |
+                            ha-card {
+                              border-radius: 12px;
+                              padding: 8px;
+                              background-color:
+                                {% set v = states('sensor.wlanthermo_cloud_url') %}
+                                {% if v and v != 'unavailable' %}
+                                  rgba(0,200,0,0.3)
+                                {% else %}
+                                  rgba(200,0,0,0.3)
+                                {% endif %};
+                            }
+                      - type: custom:mushroom-entity-card
+                        entity: sensor.wlanthermo_system_time
+                        name: Zeit
+                        icon: mdi:clock
+                        card_mod:
+                          style: |
+                            ha-card {
+                              border-radius: 12px;
+                              padding: 8px;
+                            }
+                      - type: custom:mushroom-entity-card
+                        entity: sensor.wlanthermo_device_info
+                        name: Gerät
+                        icon: mdi:devices
+                        card_mod:
+                          style: |
+                            ha-card {
+                              border-radius: 12px;
+                              padding: 8px;
+                            }
+          - type: custom:auto-entities
+            card:
+              type: custom:apexcharts-card
+              update_interval: 5sec
+              header:
+                show: false
+                show_states: true
+              apex_config:
+                chart:
+                  height: 400
+              yaxis:
+                - id: '1'
+                  opposite: true
+                  min: 0
+                  max: 100
+                - id: '0'
+                  min: 0
+                  max: 200
+                  opposite: false
+            filter:
+              exclude:
+                  - state: unavailable
+                  - state: unknown
+              include:
+                - entity_id: sensor.wlanthermo_pitmaster_*_value
+                  options: 
+                    yaxis_id: '1'
+                    stroke_width: 1
+                    type: area
+                    opacity: 0.25
+                    curve: stepline
+                - entity_id: sensor.wlanthermo_pitmaster_*_temperatur
+                  options: 
+                    yaxis_id: '0'
+                    stroke_width: 1
+                - entity_id: sensor.wlanthermo_channel_*_temperatur
+                  options: 
+                    yaxis_id: '0'
+                    stroke_width: 3
+            sort:
+              method: entity_id
+            card_param: series
+

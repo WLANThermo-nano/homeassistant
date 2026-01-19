@@ -1,7 +1,7 @@
 {
   "domain": "wlanthermo",
   "name": "WLANThermo",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "documentation": "https://github.com/WLANThermo-nano/homeassistant",
   "requirements": [],
   "codeowners": ["@MStapelfeldt"],

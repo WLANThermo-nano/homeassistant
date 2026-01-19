@@ -1,19 +1,30 @@
 # WLANThermo – Home Assistant Integration
 
-![Version](https://img.shields.io/badge/version-0.1.2-informational)
+![Version](https://img.shields.io/badge/version-0.1.4-informational)
 ![Lizenz](https://img.shields.io/badge/license-MIT-green)
 ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025%2B-blue)
 [![Support](https://img.shields.io/badge/support-WLANThermo%20Forums-lightgrey)](https://wlanthermo.de/forums/)
 ![Owner](https://img.shields.io/badge/code%20owner-@MStapelfeldt-purple)
-
-**Version:** 0.1.2  
-**Lizenz:** MIT
 
 > **Hinweis & Haftungsausschluss**
 > Dies ist eine Community-Integration für WLANThermo.  
 > **Kein Support** durch den Autor. Forks, Weiterentwicklung und Bugfixes sind willkommen. Alle frqagen könnt ihr im [WLANThermo Forum](https://wlanthermo.de/forums/)
  stellen.  
 > **Keine Gewähr/Haftung** – Nutzung auf eigene Gefahr.
+
+
+## Hinweis zur Dashboard-Nutzung
+Um das mitgelieferte Dashboard (wlanthermo.yaml) zu verwenden, müssen folgende Frontend-Karten/Erweiterungen aus HACS installiert werden:
+
+- Auto-Entities
+- Button Card
+- Mushroom
+- ApexCharts Card
+- Card Mod
+
+Bitte installiere diese über HACS → Frontend, bevor du das Dashboard importierst oder verwendest.
+Das Dashboard ist so dynamisch wie möglich gehalten. Es müssen aber ALLE vorkommen von `wlanthermo` mit dem richtigen Gerätenamen ersetzt werden.
+z.B. `device_name: wlanthermo` → `device_name: nano_v3` oder `entity_id: sensor.wlanthermo_channel_*_temperatur` → `entity_id: sensor.nano_v3_channel_*_temperatur`
 
 ## Übersicht
 Diese Integration verbindet Home Assistant mit einem WLANThermo (ESP32/Nano/Link/Mini). Sie liest Sensordaten und Pitmaster-Status aus und stellt diese als Entitäten bereit.
