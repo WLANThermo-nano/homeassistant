@@ -41,56 +41,80 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     Dynamically creates entities for channels, pitmasters, system, and settings based on available data.
     """
     entry_id = config_entry.entry_id
-    coordinator = hass.data[DOMAIN][entry_id]["coordinator"]
-    device_name = config_entry.data.get("device_name", "WLANThermo")
-    api = hass.data[DOMAIN][entry_id]["api"]
+    entry_data = hass.data[DOMAIN][entry_id]
+    entity_store = entry_data.setdefault("entities", {})
+    entity_store.setdefault("channels", set())
+    entity_store.setdefault("pitmasters", set())
+    entity_store.setdefault("system", set())
+    entity_store.setdefault("settings", set())
 
-    # Device offline? → coordinator.data = None → Plattformen NICHT laden
-    if coordinator.data is None:
-        import logging
-        logging.getLogger(__name__).debug(
-            "WLANThermo Sensor: coordinator.data is None → skipping platform setup"
-        )
-        return
+    coordinator = entry_data["coordinator"]
+    api = entry_data["api"]
 
-    entities = []
-    import re
-    safe_device_name = re.sub(r'[^a-zA-Z0-9_]', '_', device_name.lower())
+    async def _async_discover_entities():
+        if not coordinator.data:
+            return
+        new_entities = []
 
-    # Channels
-    for channel in getattr(coordinator.data, 'channels', []):
-        entities.append(WlanthermoChannelTemperatureSensor(coordinator, channel))
-        entities.append(WlanthermoChannelTimeLeftSensor(coordinator, channel))
+        # Channels
+        for channel in coordinator.data.channels:
+            ch_id = channel.number
 
-    # Pitmasters
-    for pitmaster in getattr(coordinator.data, 'pitmasters', []):
-        entities.append(WlanthermoPitmasterValueSensor(coordinator, pitmaster, safe_device_name))
-        entities.append(WlanthermoPitmasterTemperatureSensor(coordinator, pitmaster, safe_device_name))
+            if ch_id not in entity_store["channels"]:
+                new_entities.extend([
+                    WlanthermoChannelTemperatureSensor(coordinator, ch_id, entry_data),
+                    WlanthermoChannelTimeLeftSensor(coordinator, ch_id, entry_data),
+                ])
+                entity_store["channels"].add(ch_id)
 
-    # System sensors
-    sys_obj = getattr(coordinator.data, 'system', None)
-    if sys_obj:
-        entities.append(WlanthermoSystemSensor(coordinator, safe_device_name))
-        entities.append(WlanthermoSystemTimeSensor(coordinator, sys_obj, safe_device_name))
-        entities.append(WlanthermoSystemUnitSensor(coordinator, sys_obj, safe_device_name))
-        entities.append(WlanthermoSystemSocSensor(coordinator, sys_obj, safe_device_name))
-        entities.append(WlanthermoSystemChargeSensor(coordinator, sys_obj, safe_device_name))
-        entities.append(WlanthermoSystemRssiSensor(coordinator, sys_obj, safe_device_name))
-        entities.append(WlanthermoSystemOnlineSensor(coordinator, sys_obj, safe_device_name))
+        # Pitmasters
+        for pitmaster in coordinator.data.pitmasters:
+            pm_id = pitmaster.id
 
-    # Settings sensors (NUR wenn coordinator.data vorhanden ist!)
-    settings = getattr(api, "settings", None)
-    if settings:
-        if hasattr(settings, "device"):
-            entities.append(WlanthermoDeviceInfoSensor(coordinator, settings.device, safe_device_name))
-        if hasattr(settings, "system"):
-            entities.append(WlanthermoSystemInfoSensor(coordinator, settings.system, safe_device_name))
-            entities.append(WlanthermoSystemGetUpdateSensor(coordinator, settings.system, safe_device_name))
-        if hasattr(settings, "iot"):
-            entities.append(WlanthermoIotInfoSensor(coordinator, settings.iot, safe_device_name))
-            entities.append(WlanthermoCloudLinkSensor(coordinator, settings.iot, safe_device_name))
+            if pm_id not in entity_store["pitmasters"]:
+                new_entities.extend([
+                    WlanthermoPitmasterValueSensor(coordinator, pitmaster, entry_data),
+                    WlanthermoPitmasterTemperatureSensor(coordinator, pitmaster, entry_data),
+                ])
+                entity_store["pitmasters"].add(pm_id)
 
-    async_add_entities(entities)
+        # System sensors
+        system = getattr(coordinator.data, "system", None)
+        if system and not entity_store["system"]:
+            new_entities.extend([
+                WlanthermoSystemSensor(coordinator, entry_data),
+                WlanthermoSystemTimeSensor(coordinator, entry_data),
+                WlanthermoSystemUnitSensor(coordinator, entry_data),
+                WlanthermoSystemSocSensor(coordinator, entry_data),
+                WlanthermoSystemChargeSensor(coordinator, entry_data),
+                WlanthermoSystemRssiSensor(coordinator, entry_data),
+                WlanthermoCloudOnlineSensor(coordinator, entry_data),
+            ])
+            entity_store["system"].add("system")
+
+        # Settings sensors (NUR wenn coordinator.data vorhanden ist!)
+        settings = getattr(api, "settings", None)
+        if settings and not entity_store["settings"]:
+            if hasattr(settings, "device"):
+                new_entities.append(WlanthermoDeviceInfoSensor(coordinator, entry_data))
+            if hasattr(settings, "system"):
+                new_entities.extend([
+                    WlanthermoSystemInfoSensor(coordinator, entry_data),
+                    WlanthermoSystemGetUpdateSensor(coordinator, entry_data),
+                ])
+            if hasattr(settings, "iot"):
+                new_entities.extend([
+                    WlanthermoIotInfoSensor(coordinator, entry_data),
+                    WlanthermoCloudLinkSensor(coordinator, entry_data),
+                ])
+
+            entity_store["settings"].add("settings")
+
+        if new_entities:
+            async_add_entities(new_entities)
+
+    await _async_discover_entities()
+    coordinator.async_add_listener(_async_discover_entities)
 
 
 class WlanthermoChannelTemperatureSensor(CoordinatorEntity, SensorEntity):
@@ -98,55 +122,31 @@ class WlanthermoChannelTemperatureSensor(CoordinatorEntity, SensorEntity):
     Sensor entity for a channel's temperature.
     Reports the current temperature for each channel.
     """
-    def __init__(self, coordinator, channel, field=None):
+    def __init__(self, coordinator, channel_number: int, entry_data):
         super().__init__(coordinator)
-        self._channel_number = channel.number
-        # Try to get a friendly device name from the coordinator or fallback
-        device_name = getattr(coordinator, 'device_name', None)
-        if not device_name:
-            entry_id = getattr(coordinator, 'config_entry', None).entry_id if hasattr(coordinator, 'config_entry') else None
-            hass = getattr(coordinator, 'hass', None)
-            if hass and entry_id:
-                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo")
-            else:
-                device_name = "WLANThermo"
-        safe_device_name = device_name.replace(" ", "_").lower()
+        self._channel_number = channel_number
         self._attr_has_entity_name = True
         self._attr_translation_key = "channel_temperature"
-        self._attr_translation_placeholders = {"channel_number": str(self._channel_number)}
-        self._attr_unique_id = f"{safe_device_name}_channel_{self._channel_number}_temperatur"
+        self._attr_translation_placeholders = {"channel_number": str(channel_number)}
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_channel_{channel_number}_temperature"
+        )
         self._attr_icon = "mdi:thermometer"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        self._attr_device_info = entry_data["device_info"]
 
     def _get_channel(self):
         """
         Helper to get the current channel object from the coordinator data.
         """
-        channels = getattr(self.coordinator.data, 'channels', [])
-        for ch in channels:
+        if not self.coordinator.data:
+            return None
+        
+        for ch in self.coordinator.data.channels:
             if ch.number == self._channel_number:
                 return ch
-        return None
-
-    @property
-    def device_info(self):
-        """
-        Return device info for Home Assistant device registry.
-        """
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            device_info = hass.data[DOMAIN][entry_id]["device_info"].copy()
-            api = hass.data[DOMAIN][entry_id].get("api")
-            settings = getattr(api, "settings", None)
-            if settings and hasattr(settings, "device"):
-                dev = settings.device
-                device_info["sw_version"] = getattr(dev, "sw_version", None)
-                device_info["hw_version"] = getattr(dev, "hw_version", None)
-                device_info["model"] = f"{getattr(dev, 'device', None)} {getattr(dev, 'hw_version', None)} {getattr(dev, 'cpu', None)}"
-            return device_info
         return None
 
     @property
@@ -203,47 +203,32 @@ class WlanthermoChannelTimeLeftSensor(CoordinatorEntity, SensorEntity):
     Sensor entity estimating time left until the channel reaches its max temperature.
     Uses a moving window to estimate rate of temperature change.
     """
-    def __init__(self, coordinator, channel, window_seconds=300):
+    def __init__(self, coordinator, channel_number: int, entry_data, window_seconds=300):
         super().__init__(coordinator)
-        self._channel_number = channel.number
-        # Try to get a friendly device name from the coordinator or fallback
-        device_name = getattr(coordinator, 'device_name', None)
-        if not device_name:
-            entry_id = getattr(coordinator, 'config_entry', None).entry_id if hasattr(coordinator, 'config_entry') else None
-            hass = getattr(coordinator, 'hass', None)
-            if hass and entry_id:
-                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo")
-            else:
-                device_name = "WLANThermo"
-        safe_device_name = device_name.replace(" ", "_").lower()
+        self._channel_number = channel_number
+        self._window_seconds = window_seconds
+        self._history = collections.deque(maxlen=60)
+
+        self._attr_device_info = entry_data["device_info"]
         self._attr_has_entity_name = True
         self._attr_translation_key = "channel_time_left"
-        self._attr_translation_placeholders = {"channel_number": str(self._channel_number)}
-        self._attr_unique_id = f"{safe_device_name}_channel_{self._channel_number}_timeleft"
+        self._attr_translation_placeholders = {"channel_number": str(channel_number)}
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_channel_{channel_number}_timeleft"
+        )
         self._attr_icon = "mdi:timer"
         self._attr_native_unit_of_measurement = UnitOfTime.MINUTES
-        self._window_seconds = window_seconds
-        self._history = collections.deque(maxlen=60)  # store (timestamp, temp)
 
     def _get_channel(self):
         """
         Helper to get the current channel object from the coordinator data.
         """
-        channels = getattr(self.coordinator.data, 'channels', [])
-        for ch in channels:
+        if not self.coordinator.data:
+            return None
+        
+        for ch in self.coordinator.data.channels:
             if ch.number == self._channel_number:
                 return ch
-        return None
-
-    @property
-    def device_info(self):
-        """
-        Return device info for Home Assistant device registry.
-        """
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
         return None
     
     @property
@@ -314,175 +299,167 @@ class WlanthermoChannelTimeLeftSensor(CoordinatorEntity, SensorEntity):
 
 
 class WlanthermoSystemSensor(CoordinatorEntity, SensorEntity):
-    """
-    Sensor entity for system-level information (diagnostics, time, etc.).
-    """
-    def __init__(self, coordinator, device_name):
+    """Overall system online/offline state."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "system_status"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["offline", "online"]
+
+    def __init__(self, coordinator, entry_data):
         super().__init__(coordinator)
-        self._device_name = device_name
-        self._attr_name = "System"
-        self._attr_unique_id = f"{device_name}_system"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_system_status"
+        self._attr_device_info = entry_data["device_info"]
 
     @property
-    def device_info(self):
-        """
-        Return device info for Home Assistant device registry.
-        """
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
+    def native_value(self) -> str:
+        if not self.coordinator.last_update_success:
+            return "offline"
+
+        system = getattr(self.coordinator.data, "system", None)
+        if not system:
+            return "offline"
+
+        return "online"
 
     @property
-    def native_value(self):
-        """
-        Return the current system time value.
-        """
-        return None
-        #return getattr(self.coordinator.data.system, 'time', None)
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
+
+    @property
+    def icon(self):
+        return (
+            "mdi:lan-connect"
+            if self.native_value == "online"
+            else "mdi:lan-disconnect"
+        )
 
     @property
     def extra_state_attributes(self):
-        """
-        Return additional system attributes for diagnostics.
-        """
-        sys = self.coordinator.data.system
-        return {
-            "time": getattr(sys, 'time', None),
-            "unit": getattr(sys, 'unit', None),
-            "soc": getattr(sys, 'soc', None),
-            "charge": getattr(sys, 'charge', None),
-            "rssi": getattr(sys, 'rssi', None),
-            "online": getattr(sys, 'online', None),
-        }
+        if not self.coordinator.data:
+            return None
 
-    @property
-    def available(self):
-        """
-        Return True if the device is online.
-        """
-        if not self.coordinator.last_update_success:
-            return False
         system = getattr(self.coordinator.data, "system", None)
-        if system is None:
-            return False
-        return True
+        if not system:
+            return None
+
+        return {
+            "time": getattr(system, "time", None),
+            "unit": getattr(system, "unit", None),
+            "soc": getattr(system, "soc", None),
+            "charge": getattr(system, "charge", None),
+            "rssi": getattr(system, "rssi", None),
+            "online": getattr(system, "online", None),
+        }
 
 class WlanthermoSystemGetUpdateSensor(CoordinatorEntity, SensorEntity):
     """
-    Sensor entity for system update availability (from /settings.system endpoint).
+    Sensor entity for system update availability (from /settings.system).
     """
-    def __init__(self, coordinator, system, device_name):
-        super().__init__(coordinator)
-        self._system = system
-        self._attr_name = "System Update Available"
-        self._attr_unique_id = f"{device_name}_system_getupdate"
 
-    def _handle_coordinator_update(self):
-         # keep settings.system in sync if coordinator refreshes settings
-        api = self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id].get("api")
-        settings = getattr(api, "settings", None)
-        if settings and hasattr(settings, "system"):
-            self._system = settings.system
-        self.async_write_ha_state()
+    _attr_has_entity_name = True
+    _attr_translation_key = "system_update"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry_data):
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_system_getupdate"
+        self._attr_device_info = entry_data["device_info"]
 
     @property
-    def device_info(self):
-        entry_id = None
-        hass = None
-        if hasattr(self, 'coordinator') and hasattr(self.coordinator, 'config_entry'):
-            entry_id = getattr(self.coordinator.config_entry, 'entry_id', None)
-            hass = getattr(self.coordinator, 'hass', None)
-        if not entry_id or not hass:
-            try:
-                import homeassistant.helpers.entity_platform
-                platform = homeassistant.helpers.entity_platform.current_platform.get()
-                hass = getattr(platform, 'hass', None)
-                entry_id = getattr(platform, 'config_entry', None).entry_id if hasattr(platform, 'config_entry') else None
-            except Exception:
-                pass
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
+    def _system(self):
+        """
+        Return current settings.system from API (not coordinator.data).
+        """
+        hass = self.coordinator.hass
+        entry_id = self.coordinator.config_entry.entry_id
 
+        api = hass.data[DOMAIN][entry_id]["api"]
+        settings = getattr(api, "settings", None)
+
+        return getattr(settings, "system", None) if settings else None
+
+    @property
+    def native_value(self) -> str | int | None:
+        """
+        Returns:
+        - None / False → no update available
+        - str / int → update available
+        """
+        system = self._system
+        return getattr(system, "getupdate", None) if system else None
+
+    @property
+    def extra_state_attributes(self):
+        system = self._system
+        if not system:
+            return {}
+
+        return {
+            "version": getattr(system, "version", None),
+            "unit": getattr(system, "unit", None),
+            "autoupdate": getattr(system, "autoupd", None),
+        }
+
+    @property
+    def available(self) -> bool:
+        """
+        Sensor is available when device is reachable and system settings exist.
+        """
+        return self.coordinator.last_update_success and self._system is not None
+
+
+class WlanthermoCloudLinkSensor(CoordinatorEntity, SensorEntity):
+    """
+    Sensor entity for the cloud link (from /settings.iot).
+    """
+
+    _attr_name = "Cloud Link"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry_data):
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_cloud_link"
+        self._attr_device_info = entry_data["device_info"]
+
+    @property
+    def _iot(self):
+        data = self.coordinator.data
+        if not data or not getattr(data, "settings", None):
+            return None
+        return getattr(data.settings, "iot", None)
+    
     @property
     def native_value(self) -> str | None:
         """
-        Return the update state: can be 'false' or a number (update available).
+        Return the cloud link URL if enabled.
         """
-        return getattr(self._system, "getupdate", None)
+        iot = self._iot
+        if not iot or not getattr(iot, "CLon", False):
+            return None
+
+        url = getattr(iot, "CLurl", None)
+        token = getattr(iot, "CLtoken", None)
+
+        if url and token:
+            return f"{url}?api_token={token}"
+
+        return url
 
     @property
     def extra_state_attributes(self):
         """
-        Return extra attributes for diagnostics (version, unit).
+        Return extra attributes for diagnostics (cloud link status, URL, token).
         """
+        iot = self._iot
+        if not iot:
+            return {}
         return {
-            "version": getattr(self._system, "version", None),
-            "unit": getattr(self._system, "unit", None),
+            "CLon": getattr(iot, "CLon", None),
+            "CLurl": getattr(iot, "CLurl", None),
+            "CLtoken": getattr(iot, "CLtoken", None),
         }
-    
-    @property
-    def available(self):
-        """
-        Return True if device is online.
-        """
-        if not self.coordinator.last_update_success:
-            return False
-        return self._system is not None
-
-class WlanthermoCloudLinkSensor(CoordinatorEntity, SensorEntity):
-    """
-    Sensor entity for the cloud link (from /settings.iot endpoint).
-    """
-    def __init__(self, coordinator, iot, device_name):
-        super().__init__(coordinator)
-        self._iot = iot
-        self._attr_name = "Cloud Link"
-        self._attr_unique_id = f"{device_name}_cloud_link"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-
-
-    def _handle_coordinator_update(self):
-        api = self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id]["api"]
-        settings = getattr(api, "settings", None)
-        if settings and hasattr(settings, "iot"):
-            self._iot = settings.iot
-        super()._handle_coordinator_update()
-
-    @property
-    def device_info(self):
-        entry_id = None
-        hass = None
-        if hasattr(self, 'coordinator') and hasattr(self.coordinator, 'config_entry'):
-            entry_id = getattr(self.coordinator.config_entry, 'entry_id', None)
-            hass = getattr(self.coordinator, 'hass', None)
-        if not entry_id or not hass:
-            try:
-                import homeassistant.helpers.entity_platform
-                platform = homeassistant.helpers.entity_platform.current_platform.get()
-                hass = getattr(platform, 'hass', None)
-                entry_id = getattr(platform, 'config_entry', None).entry_id if hasattr(platform, 'config_entry') else None
-            except Exception:
-                pass
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
-    
-    @property
-    def native_value(self) -> str | None:
-        """
-        Return the cloud link URL if enabled, including the API token if available.
-        """
-        if getattr(self._iot, "CLon", False):
-            url = getattr(self._iot, "CLurl", None)
-            token = getattr(self._iot, "CLtoken", None)
-            if url and token:
-                return f"{url}?api_token={token}"
-            return url or None
-        return None
     
     @property
     def available(self):
@@ -493,58 +470,42 @@ class WlanthermoCloudLinkSensor(CoordinatorEntity, SensorEntity):
             return False
 
         system = getattr(self.coordinator.data, "system", None)
-        if system is None:
+        if not system:
             return False
 
         return getattr(system, "online", None) == 2
     
-
-    @property
-    def extra_state_attributes(self):
-        """
-        Return extra attributes for diagnostics (cloud link status, URL, token).
-        """
-        return {
-            "CLon": getattr(self._iot, "CLon", None),
-            "CLurl": getattr(self._iot, "CLurl", None),
-            "CLtoken": getattr(self._iot, "CLtoken", None),
-        }
     
 class WlanthermoSystemTimeSensor(CoordinatorEntity, SensorEntity):
     """
     Sensor entity for system time (diagnostic, from system object).
     """
-    def __init__(self, coordinator, sys, device_name):
+    _attr_has_entity_name = True
+    _attr_translation_key = "system_time"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    #_attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_icon = "mdi:clock"
+
+    def __init__(self, coordinator, entry_data):
         super().__init__(coordinator)
-        self._attr_has_entity_name = True
-        self._attr_translation_key = "system_time"
-        self._attr_unique_id = f"{device_name}_system_time"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_device_class = SensorDeviceClass.TIMESTAMP
-
-
-    @property
-    def icon(self):
-        return "mdi:clock"
-    
-    @property
-    def device_info(self):
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_system_time"
+        self._attr_device_info = entry_data["device_info"]
 
     @property
     def native_value(self):
         system = getattr(self.coordinator.data, 'system', None)
-        unixtime = getattr(system, 'time', None) if system else None
+        if not system:
+            return None
+        
+        unixtime = getattr(system, 'time', None)
         if unixtime is None:
             return None
+        
         try:
             # Accept both int and str
             ts = int(unixtime)
-            return datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+            return datetime.fromtimestamp(ts).strftime("%H:%M:%S %d.%m.%Y")
+            # return datetime.fromtimestamp(ts, tz=timezone.utc)
         except Exception:
             return str(unixtime)
 
@@ -555,460 +516,369 @@ class WlanthermoSystemTimeSensor(CoordinatorEntity, SensorEntity):
         """
         return self.coordinator.last_update_success
 
+
 class WlanthermoSystemUnitSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, sys, device_name):
+    """
+    Sensor entity for temperature unit (°C / °F).
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "temperature_unit"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_icon = "mdi:thermometer"
+    _attr_options = ["C", "F"]
+
+    def __init__(self, coordinator, entry_data):
         super().__init__(coordinator)
-        self._sys = sys
-        self._attr_has_entity_name = True
-        self._attr_translation_key = "temperature_unit"
-        self._attr_unique_id = f"{device_name}_system_unit"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_icon = "mdi:thermometer"
-    
-    @property
-    def device_info(self):
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
-    
-    @property
-    def native_value(self) -> str | None:
-        return getattr(self._sys, 'unit', None)
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_system_unit"
+        self._attr_device_info = entry_data["device_info"]
 
     @property
-    def available(self):
-        """
-        Return True if the device is online.
-        """
-        if not self.coordinator.last_update_success:
-            return False
-        system = getattr(self.coordinator.data, 'system', None)
-        if system is None:
-            return False
-        return True
+    def native_value(self) -> str | None:
+        system = getattr(self.coordinator.data, "system", None)
+        if not system:
+            return None
+
+        unit = getattr(system, "unit", None)
+        if unit in self._attr_options:
+            return unit
+
+        return None
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
 
 class WlanthermoSystemSocSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, sys, device_name):
+    """
+    Sensor entity for battery state of charge (SoC).
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "battery_level"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.BATTERY
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = PERCENTAGE
+
+    def __init__(self, coordinator, entry_data):
         super().__init__(coordinator)
-        self._attr_has_entity_name = True
-        self._attr_translation_key = "battery_level"
-        self._attr_unique_id = f"{device_name}_system_soc"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_device_class = SensorDeviceClass.BATTERY
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_native_unit_of_measurement = PERCENTAGE
-
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_system_soc"
+        self._attr_device_info = entry_data["device_info"]
 
     @property
-    def icon(self):
-        return "mdi:battery"
-    
-    @property
-    def device_info(self):
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
-    
-    @property
-    def native_value(self):
-        system = getattr(self.coordinator.data, 'system', None)
-        return getattr(system, 'soc', None) if system else None
+    def native_value(self) -> int | None:
+        system = getattr(self.coordinator.data, "system", None)
+        soc = getattr(system, "soc", None) if system else None
+
+        try:
+            return int(soc) if soc is not None else None
+        except (ValueError, TypeError):
+            return None
 
     @property
-    def available(self):
-        """
-        Return True if the device is online.
-        """
-        if not self.coordinator.last_update_success:
-            return False
-        system = getattr(self.coordinator.data, 'system', None)
-        if system is None:
-            return False
-        return True
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
     
 class WlanthermoSystemChargeSensor(CoordinatorEntity, BinarySensorEntity):
-    def __init__(self, coordinator, sys, device_name):
+    """
+    Binary sensor indicating whether the battery is currently charging.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "battery_charging"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = BinarySensorDeviceClass.BATTERY_CHARGING
+
+    def __init__(self, coordinator, entry_data):
         super().__init__(coordinator)
-        self._attr_has_entity_name = True
-        self._attr_translation_key = "battery_charging"
-        self._attr_unique_id = f"{device_name}_system_charge"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_device_class = BinarySensorDeviceClass.BATTERY_CHARGING
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_system_charge"
+        self._attr_device_info = entry_data["device_info"]
 
     @property
-    def icon(self):
-        return "mdi:power-plug"
-    
-    @property
-    def device_info(self):
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
-    
-    @property 
-    def is_on(self):
-         """ 
-         Return True if the battery is charging.
-         """
-         system = getattr(self.coordinator.data, "system", None)
-         if not system: 
-             return None # system.charge sollte True/False liefern
-         return bool(getattr(system, "charge", False))
+    def is_on(self) -> bool | None:
+        """
+        Return True if the battery is charging.
+        """
+        system = getattr(self.coordinator.data, "system", None)
+        charge = getattr(system, "charge", None) if system else None
+
+        if charge is None:
+            return None
+
+        return bool(charge)
 
     @property
-    def available(self):
-        """
-        Return True if the device is online.
-        """
-        if not self.coordinator.last_update_success:
-            return False
-        system = getattr(self.coordinator.data, 'system', None)
-        if system is None:
-            return False
-        return True
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
+
 
 class WlanthermoSystemRssiSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, sys, device_name):
+    """
+    Sensor entity for WLAN RSSI (signal strength in dBm).
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "wifi_signal"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "dBm"
+
+    def __init__(self, coordinator, entry_data):
         super().__init__(coordinator)
-        self._attr_name = "Wlan RSSI"
-        self._attr_unique_id = f"{device_name}_system_rssi"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_native_unit_of_measurement ="dBm"
-
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_system_rssi"
+        self._attr_device_info = entry_data["device_info"]
 
     @property
-    def icon(self):
-        return "mdi:network"
-    
-    @property
-    def device_info(self):
-            entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-            hass = getattr(self.coordinator, 'hass', None)
-            if hass and entry_id:
-                return hass.data[DOMAIN][entry_id]["device_info"]
+    def native_value(self) -> int | None:
+        """
+        Return the current WLAN RSSI value (negative dBm).
+        """
+        system = getattr(self.coordinator.data, "system", None)
+        rssi = getattr(system, "rssi", None) if system else None
+
+        if rssi is None:
             return None
-    
-    @property
-    def native_value(self):
-        """
-        Return the current WLAN RSSI value from the system object.
-        """
-        system = getattr(self.coordinator.data, 'system', None)
-        return getattr(system, 'rssi', None) if system else None
-    
-    @property
-    def available(self):
-        """
-        Return True if the device is online.
-        """
-        if not self.coordinator.last_update_success:
-            return False
-        system = getattr(self.coordinator.data, 'system', None)
-        if system is None:
-            return False
-        return True
-    
-class WlanthermoSystemOnlineSensor(CoordinatorEntity, SensorEntity):
-    """
-    Reports the WLANThermo system online state (0/1/2) as a translated string.
-    """
-    def __init__(self, coordinator, sys_obj, device_name):
-        super().__init__(coordinator)
-        self._sys = sys_obj
-        self._translations = {}
-
-        self._attr_has_entity_name = True
-        self._attr_translation_key = "cloud_status"
-        self._attr_unique_id = f"{device_name}_system_online"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
-        self._attr_device_class = SensorDeviceClass.ENUM
-        self._attr_options = ["not_connected", "standby", "connected"]
-
-    async def async_added_to_hass(self):
-        await self._async_load_translations()
-
-    async def _async_load_translations(self):
-        import os, json
-        hass = self.hass
-        lang = getattr(hass.config, "language", "en")
-
-        base = os.path.dirname(__file__)
-        path = os.path.join(base, "translations", f"{lang}.json")
-
-        if not os.path.exists(path):
-            path = os.path.join(base, "translations", "en.json")
-
-        def load(path):
-            with open(path, encoding="utf-8") as f:
-                return json.load(f)
 
         try:
-            self._translations = await hass.async_add_executor_job(load, path)
-        except Exception:
-            self._translations = {}
-
-    def _handle_coordinator_update(self):
-        # Update system object
-        self._sys = getattr(self.coordinator.data, "system", None)
-        self.async_write_ha_state()
-
-    @property
-    def icon(self):
-        return "mdi:cloud"
-
-    @property
-    def device_info(self):
-        entry_id = self.coordinator.config_entry.entry_id
-        hass = self.coordinator.hass
-        return hass.data[DOMAIN][entry_id]["device_info"]
-
-    @property
-    def native_value(self) -> str | None:
-        if not self.available:
-            return "not_connected"
-
-        system = self._sys
-        value = getattr(system, "online", None) if system else None
-
-        map_value = {
-            0: "not_connected",
-            1: "standby",
-            2: "connected",
-        }
-
-        try:
-            return map_value.get(int(value))
+            return int(rssi)
         except (TypeError, ValueError):
             return None
 
     @property
-    def available(self):
-        """
-        Return True if the device is online.
-        """
-        if not self.coordinator.last_update_success:
-            return False
-        system = getattr(self.coordinator.data, 'system', None)
-        if system is None:
-            return False
-        return True
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
+    
+
+class WlanthermoCloudOnlineSensor(CoordinatorEntity, SensorEntity):
+    """
+    Reports the WLANThermo Cloud online state (0/1/2) as ENUM.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "cloud_status"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["not_connected", "standby", "connected"]
+
+    def __init__(self, coordinator, entry_data):
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_cloud_status"
+        self._attr_device_info = entry_data["device_info"]
+
+    @property
+    def native_value(self) -> str | None:
+        system = getattr(self.coordinator.data, "system", None)
+        if not system:
+            return None
+
+        value = getattr(system, "online", None)
+
+        try:
+            return {
+                0: "not_connected",
+                1: "standby",
+                2: "connected",
+            }.get(int(value))
+        except (TypeError, ValueError):
+            return None
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
+    
 
 class WlanthermoDeviceInfoSensor(CoordinatorEntity, SensorEntity):
     """
-    Sensor entity for device information (from /settings.device endpoint).
-    Reports device details such as serial, CPU, hardware/software version, etc.
+    Diagnostic sensor exposing WLANThermo device information
+    from /settings.device.
     """
-    def __init__(self, coordinator, device, device_name):
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "device_info"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:information"
+
+    def __init__(self, coordinator, entry_data):
         super().__init__(coordinator)
-        self._device = device
-        self._attr_has_entity_name = True
-        self._attr_translation_key = "device_info"
-        self._attr_unique_id = f"{device_name}_device_info"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_device_info"
+        self._attr_device_info = entry_data["device_info"]
 
-    def _handle_coordinator_update(self):
-        api = self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id]["api"]
+    @property
+    def _device(self):
+        """
+        Always return the current settings.device object.
+        """
+        api = self.coordinator.hass.data[DOMAIN][
+            self.coordinator.config_entry.entry_id
+        ].get("api")
+
         settings = getattr(api, "settings", None)
-        if settings and hasattr(settings, "device"):
-            self._device = settings.device
-        self.async_write_ha_state()
+        return getattr(settings, "device", None) if settings else None
 
-    @property
-    def icon(self):
-        return "mdi:information"
-    @property
-    def device_info(self):
-            entry_id = None
-            hass = None
-            if hasattr(self, 'coordinator') and hasattr(self.coordinator, 'config_entry'):
-                entry_id = getattr(self.coordinator.config_entry, 'entry_id', None)
-                hass = getattr(self.coordinator, 'hass', None)
-            if not entry_id or not hass:
-                try:
-                    import homeassistant.helpers.entity_platform
-                    platform = homeassistant.helpers.entity_platform.current_platform.get()
-                    hass = getattr(platform, 'hass', None)
-                    entry_id = getattr(platform, 'config_entry', None).entry_id if hasattr(platform, 'config_entry') else None
-                except Exception:
-                    pass
-            if hass and entry_id:
-                return hass.data[DOMAIN][entry_id]["device_info"]
-            return None
-    
     @property
     def native_value(self) -> str | None:
         """
-        Return the device name from the device info object.
+        Use the device model/name as main state.
         """
-        return getattr(self._device, "device", None)
+        device = self._device
+        return getattr(device, "device", None) if device else None
 
     @property
     def extra_state_attributes(self):
         """
-        Return extra attributes for diagnostics (serial, cpu, flash size, versions, language).
+        Full diagnostic payload.
         """
+        device = self._device
+        if not device:
+            return {}
+
         return {
-            "serial": getattr(self._device, "serial", None),
-            "cpu": getattr(self._device, "cpu", None),
-            "flash_size": getattr(self._device, "flash_size", None),
-            "hw_version": getattr(self._device, "hw_version", None),
-            "sw_version": getattr(self._device, "sw_version", None),
-            "api_version": getattr(self._device, "api_version", None),
-            "language": getattr(self._device, "language", None),
+            "serial": getattr(device, "serial", None),
+            "cpu": getattr(device, "cpu", None),
+            "flash_size": getattr(device, "flash_size", None),
+            "hw_version": getattr(device, "hw_version", None),
+            "sw_version": getattr(device, "sw_version", None),
+            "api_version": getattr(device, "api_version", None),
+            "language": getattr(device, "language", None),
         }
+
     @property
-    def available(self):
-        if not self.coordinator.last_update_success:
-            return False
-        return self._device is not None
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
 
 
 class WlanthermoSystemInfoSensor(CoordinatorEntity, SensorEntity):
     """
-    Sensor entity for system information (from /settings.system endpoint).
-    Reports system details such as AP, host, language, update info, etc.
+    Diagnostic sensor exposing system information
+    from /settings.system.
     """
-    def __init__(self, coordinator, system, device_name):
+
+    _attr_has_entity_name = True
+    _attr_name = "System Info"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:cog-outline"
+
+    def __init__(self, coordinator, entry_data):
         super().__init__(coordinator)
-        self._system = system
-        self._attr_name = "System Info"
-        self._attr_unique_id = f"{device_name}_system_info"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_system_info"
+        self._attr_device_info = entry_data["device_info"]
 
-    def _handle_coordinator_update(self):
-        api = self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id]["api"]
+    @property
+    def _system(self):
+        """
+        Always return the current settings.system object.
+        """
+        api = self.coordinator.hass.data[DOMAIN][
+            self.coordinator.config_entry.entry_id
+        ].get("api")
+
         settings = getattr(api, "settings", None)
-        if settings and hasattr(settings, "system"):
-            self._system = settings.system
-        self.async_write_ha_state()
+        return getattr(settings, "system", None) if settings else None
 
-    @property
-    def icon(self):
-        return "mdi:thermometer"
-
-    @property
-    def device_info(self):
-        entry_id = None
-        hass = None
-        if hasattr(self, 'coordinator') and hasattr(self.coordinator, 'config_entry'):
-            entry_id = getattr(self.coordinator.config_entry, 'entry_id', None)
-            hass = getattr(self.coordinator, 'hass', None)
-        if not entry_id or not hass:
-            try:
-                import homeassistant.helpers.entity_platform
-                platform = homeassistant.helpers.entity_platform.current_platform.get()
-                hass = getattr(platform, 'hass', None)
-                entry_id = getattr(platform, 'config_entry', None).entry_id if hasattr(platform, 'config_entry') else None
-            except Exception:
-                pass
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
-    
     @property
     def native_value(self) -> str | None:
         """
-        Return the system unit (e.g., temperature unit) from the system info object.
+        Use temperature unit as primary state (informational).
         """
-        return getattr(self._system, "unit", None)
+        system = self._system
+        return getattr(system, "unit", None) if system else None
 
     @property
     def extra_state_attributes(self):
         """
-        Return extra attributes for diagnostics (AP, host, language, update info).
+        Full diagnostic payload.
         """
+        system = self._system
+        if not system:
+            return {}
+
         return {
-            "ap": getattr(self._system, "ap", None),
-            "host": getattr(self._system, "host", None),
-            "language": getattr(self._system, "language", None),
-            "getupdate": getattr(self._system, "getupdate", None),
-            "autoupd": getattr(self._system, "autoupd", None),
+            "ap": getattr(system, "ap", None),
+            "host": getattr(system, "host", None),
+            "language": getattr(system, "language", None),
+            "getupdate": getattr(system, "getupdate", None),
+            "autoupd": getattr(system, "autoupd", None),
         }
+
     @property
-    def available(self):
-        """
-        Return True if the device is online.
-        """
-        if not self.coordinator.last_update_success:
-            return False
-        return self._system is not None
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
+
 
 class WlanthermoIotInfoSensor(CoordinatorEntity, SensorEntity):
     """
-    Sensor entity for IoT/cloud information (from /settings.iot endpoint).
-    Reports first part for cloud URL.
+    Diagnostic sensor exposing IoT / cloud information
+    from /settings.iot.
     """
-    def __init__(self, coordinator, iot, device_name):
-        super().__init__(coordinator)
-        self._iot = iot
-        self._attr_name = "Cloud URL"
-        self._attr_unique_id = f"{device_name}_cloud_url"
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def _handle_coordinator_update(self):
-        api = self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id]["api"]
+    _attr_has_entity_name = True
+    _attr_name = "Cloud URL"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:cloud-outline"
+
+    def __init__(self, coordinator, entry_data):
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_cloud_url"
+        self._attr_device_info = entry_data["device_info"]
+
+    @property
+    def _iot(self):
+        """
+        Always return current settings.iot from the API.
+        """
+        api = self.coordinator.hass.data[DOMAIN][
+            self.coordinator.config_entry.entry_id
+        ].get("api")
+
         settings = getattr(api, "settings", None)
-        if settings and hasattr(settings, "iot"):
-            self._iot = settings.iot
-        self.async_write_ha_state()
+        return getattr(settings, "iot", None) if settings else None
 
     @property
     def native_value(self) -> str | None:
         """
-        Return the cloud URL from the IoT info object.
+        Return the configured cloud URL (if any).
         """
-        return getattr(self._iot, "CLurl", None)
+        iot = self._iot
+        return getattr(iot, "CLurl", None) if iot else None
 
     @property
     def extra_state_attributes(self):
         """
-        Return extra attributes for diagnostics (cloud URL).
+        Additional IoT diagnostics.
         """
+        iot = self._iot
+        if not iot:
+            return {}
+
         return {
-            "cloud_url": getattr(self._iot, "CLurl", None),
+            "CLon": getattr(iot, "CLon", None),
+            "CLurl": getattr(iot, "CLurl", None),
+            "CLtoken": getattr(iot, "CLtoken", None),
         }
 
     @property
-    def device_info(self):
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
-    
-    @property
-    def available(self):
-        """
-        Return True if the device is online.
-        """
-        if not self.coordinator.last_update_success:
-            return False
-        return self._iot is not None
+    def available(self) -> bool:
+        return self.coordinator.last_update_success
+
     
 class WlanthermoChannelSensor(CoordinatorEntity, SensorEntity):
     """
-    Sensor entity for a channel, reporting temperature and channel details.
+    Sensor entity for a channel temperature.
     """
-    def __init__(self, coordinator, channel, device_name):
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "channel"
+
+    def __init__(self, coordinator, channel, entry_data):
         super().__init__(coordinator)
-        self._attr_has_entity_name = True
-        self._attr_translation_key = "channel"
         self._channel_number = channel.number
-        self._device_name = device_name
-        self._attr_unique_id = f"{device_name}_channel_{channel.number}"
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_channel_{channel.number}"
+        self._attr_device_info = entry_data["device_info"]
 
     def _get_channel(self):
-        """
-        Helper to get the current channel object from the coordinator data.
-        """
         channels = getattr(self.coordinator.data, "channels", [])
         for ch in channels:
             if ch.number == self._channel_number:
@@ -1016,29 +886,12 @@ class WlanthermoChannelSensor(CoordinatorEntity, SensorEntity):
         return None
 
     @property
-    def device_info(self):
-        """
-        Return device info for Home Assistant device registry.
-        """
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
-
-    @property
     def native_value(self) -> float | None:
-        """
-        Return the current temperature value for this channel.
-        """
         ch = self._get_channel()
         return getattr(ch, "temp", None) if ch else None
 
     @property
     def extra_state_attributes(self):
-        """
-        Return extra attributes for diagnostics (channel details).
-        """
         ch = self._get_channel()
         if not ch:
             return {}
@@ -1046,8 +899,7 @@ class WlanthermoChannelSensor(CoordinatorEntity, SensorEntity):
         return {
             "number": ch.number,
             "name": ch.name,
-            "typ": ch.typ,
-            "temp": ch.temp,
+            "type": ch.typ,
             "min": ch.min,
             "max": ch.max,
             "alarm": ch.alarm,
@@ -1057,9 +909,168 @@ class WlanthermoChannelSensor(CoordinatorEntity, SensorEntity):
         }
 
     @property
+    def available(self) -> bool:
+        if not self.coordinator.last_update_success:
+            return False
+
+        if not getattr(self.coordinator.data, "system", None):
+            return False
+
+        return self._get_channel() is not None
+
+
+class WlanthermoPitmasterSensor(CoordinatorEntity, SensorEntity):
+    """
+    Sensor entity for pitmaster value.
+    """
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, pitmaster, idx, entry_data):
+        super().__init__(coordinator)
+        self._pitmaster_id = pitmaster.id
+        self._attr_name = f"Pitmaster {idx}"
+        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_pitmaster_{idx}"
+        self._attr_device_info = entry_data["device_info"]
+    def _get_pitmaster(self):
+        pitmasters = getattr(self.coordinator.data, "pitmasters", [])
+        for pm in pitmasters:
+            if pm.id == self._pitmaster_id:
+                return pm
+        return None
+
+    @property
+    def native_value(self) -> float | None:
+        pm = self._get_pitmaster()
+        return getattr(pm, "value", None) if pm else None
+
+    @property
+    def extra_state_attributes(self):
+        pm = self._get_pitmaster()
+        if not pm:
+            return {}
+
+        return {
+            "id": pm.id,
+            "channel": pm.channel,
+            "pid": pm.pid,
+            "set": pm.set,
+            "type": pm.typ,
+            "set_color": pm.set_color,
+            "value_color": pm.value_color,
+        }
+
+    @property
+    def available(self) -> bool:
+        if not self.coordinator.last_update_success:
+            return False
+
+        if not getattr(self.coordinator.data, "system", None):
+            return False
+
+        return self._get_pitmaster() is not None
+
+    
+class WlanthermoPitmasterValueSensor(CoordinatorEntity, SensorEntity):
+    """
+    Sensor entity for pitmaster value.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "pitmaster_value"
+    _attr_icon = "mdi:fan"
+    _attr_native_unit_of_measurement = PERCENTAGE
+
+    def __init__(self, coordinator, pitmaster, entry_data):
+        super().__init__(coordinator)
+        self._pitmaster_id = pitmaster.id
+        self._attr_translation_placeholders = {
+            "pitmaster_id": str(pitmaster.id)
+        }
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_pitmaster_{pitmaster.id}_value"
+        )
+        self._attr_device_info = entry_data["device_info"]
+
+    def _get_pitmaster(self):
+        for pm in getattr(self.coordinator.data, "pitmasters", []):
+            if pm.id == self._pitmaster_id:
+                return pm
+        return None
+
+    @property
+    def native_value(self) -> float | None:
+        pm = self._get_pitmaster()
+        return getattr(pm, "value", None) if pm else None
+
+    @property
+    def available(self) -> bool:
+        if not self.coordinator.last_update_success:
+            return False
+        return self._get_pitmaster() is not None
+
+
+class WlanthermoPitmasterTemperatureSensor(CoordinatorEntity, SensorEntity):
+    """
+    Sensor entity for a pitmaster's temperature.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "pitmaster_temperature"
+    _attr_icon = "mdi:thermometer"
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator, pitmaster, entry_data):
+        super().__init__(coordinator)
+        self._pitmaster_id = pitmaster.id
+        self._attr_translation_placeholders = {
+            "pitmaster_id": str(pitmaster.id)
+        }
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_pitmaster_{pitmaster.id}_temperature"
+        )
+        self._attr_device_info = entry_data["device_info"]
+
+    def _get_channel(self):
+        pitmasters = getattr(self.coordinator.data, "pitmasters", [])
+        pm = next((p for p in pitmasters if p.id == self._pitmaster_id), None)
+        if not pm:
+            return None
+
+        channels = getattr(self.coordinator.data, "channels", [])
+        return next(
+            (ch for ch in channels if ch.number == pm.channel),
+            None,
+        )
+
+    @property
+    def native_value(self):
+        ch = self._get_channel()
+        if not ch:
+            return None
+
+        temp = getattr(ch, "temp", None)
+        if temp == 999.0:
+            return None
+
+        return temp
+
+    @property
+    def native_unit_of_measurement(self):
+        system = getattr(self.coordinator.data, "system", None)
+        return (
+            UnitOfTemperature.FAHRENHEIT
+            if getattr(system, "unit", None) == "F"
+            else UnitOfTemperature.CELSIUS
+        )
+    
+    @property
     def available(self):
         """
-        Return True if the device is online.
+        Return True if coordinator updated successfully and
+        the pitmaster's associated channel exists.
         """
         if not self.coordinator.last_update_success:
             return False
@@ -1068,174 +1079,13 @@ class WlanthermoChannelSensor(CoordinatorEntity, SensorEntity):
         if system is None:
             return False
 
-        ch = self._get_channel()
-        if not ch:
+        channel = self._get_channel()
+        if channel is None:
+            return False
+
+        # optional: hide inactive channel (999.0)
+        if getattr(channel, "temp", None) in (None, 999.0):
             return False
 
         return True
 
-    def _handle_coordinator_update(self):
-        self.async_write_ha_state()
-
-class WlanthermoPitmasterSensor(CoordinatorEntity, SensorEntity):
-    """
-    Sensor entity for pitmaster, reporting pitmaster value and details.
-    """
-    def __init__(self, coordinator, pitmaster, device_name, idx):
-        super().__init__(coordinator)
-        self._pitmaster = pitmaster
-        self._device_name = device_name
-        self._attr_name = f"Pitmaster {idx}"
-        self._attr_unique_id = f"{device_name}_pitmaster_{idx}"
-
-    @property
-    def device_info(self):
-        """
-        Return device info for Home Assistant device registry.
-        """
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
-
-    @property
-    def native_value(self) -> float | None:
-        """
-        Return the current pitmaster value.
-        """
-        return self._pitmaster.value
-
-    @property
-    def extra_state_attributes(self):
-        """
-        Return extra attributes for diagnostics (pitmaster details).
-        """
-        return {
-            "id": self._pitmaster.id,
-            "channel": self._pitmaster.channel,
-            "pid": self._pitmaster.pid,
-            "value": self._pitmaster.value,
-            "set": self._pitmaster.set,
-            "typ": self._pitmaster.typ,
-            "set_color": self._pitmaster.set_color,
-            "value_color": self._pitmaster.value_color,
-        }
-    
-class WlanthermoPitmasterValueSensor(CoordinatorEntity, SensorEntity):
-    """
-    Sensor entity for pitmaster value, reporting the current value for a pitmaster.
-    """
-    def __init__(self, coordinator, pitmaster, device_name):
-        super().__init__(coordinator)
-        self._pitmaster_id = pitmaster.id
-        self._attr_has_entity_name = True
-        self._attr_translation_key = "pitmaster_value"
-        self._attr_translation_placeholders = {"pitmaster_id": str(pitmaster.id)}
-        safe_device_name = device_name.replace(" ", "_").lower()
-        self._attr_unique_id = f"{safe_device_name}_pitmaster_{pitmaster.id}_value"
-        self._attr_icon = "mdi:fan"
-        self._attr_native_unit_of_measurement = PERCENTAGE
-
-    def _get_pitmaster(self):
-        """
-        Helper to get the current pitmaster object from the coordinator data.
-        """
-        pitmasters = getattr(self.coordinator.data, 'pitmasters', [])
-        for pm in pitmasters:
-            if pm.id == self._pitmaster_id:
-                return pm
-        return None
-
-    @property
-    def device_info(self):
-        """
-        Return device info for Home Assistant device registry.
-        """
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
-
-    @property
-    def native_value(self) -> float | None:
-        """
-        Return the current value for this pitmaster, or None if not found.
-        """
-        pitmaster = self._get_pitmaster()
-        return getattr(pitmaster, "value", None) if pitmaster else None
-
-class WlanthermoPitmasterTemperatureSensor(CoordinatorEntity, SensorEntity):
-    """
-    Sensor entity for a pitmaster's temperature.
-    Reflects the temperature value of the channel associated with the pitmaster.
-    """
-    def __init__(self, coordinator, pitmaster, device_name):
-        super().__init__(coordinator)
-        self._pitmaster_id = pitmaster.id
-        self._attr_name = f"Pitmaster {pitmaster.id} Temperature"
-        self._attr_unique_id = f"{device_name}_pitmaster_{pitmaster.id}_temperature"
-        self._attr_icon = "mdi:thermometer"
-        self._attr_device_class = SensorDeviceClass.TEMPERATURE
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-
-    def _get_channel(self):
-        """
-        Helper to get the channel object associated with the pitmaster.
-        """
-        pitmasters = getattr(self.coordinator.data, 'pitmasters', [])
-        pitmaster = next((pm for pm in pitmasters if pm.id == self._pitmaster_id), None)
-        if not pitmaster:
-            return None
-
-        target_channel_number = getattr(pitmaster, "channel", None)
-        if target_channel_number is None:
-            return None
-        
-        channels = getattr(self.coordinator.data, 'channels', [])
-        for channel in channels:
-            if channel.number == target_channel_number:
-                return channel
-        return None
-
-    @property
-    def device_info(self):
-        """
-        Return device info for Home Assistant device registry.
-        """
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
-
-    @property
-    def native_value(self):
-        """
-        Return the temperature value for the pitmaster's associated channel.
-        """
-        channel = self._get_channel()
-        if not channel:
-            return None
-
-        temp = getattr(channel, "temp", None)
-        if temp == 999.0 and show_inactive:
-            return None
-
-        return temp
-    
-
-    @property
-    def available(self):
-        """
-        Return True if the device is online and the pitmaster's associated channel is available.
-        """
-        if not self.coordinator.last_update_success:
-            return False
-        system = getattr(self.coordinator.data, 'system', None)
-        if not (system and getattr(system, 'online', False)):
-            return False
-        channel = self._get_channel()
-        return getattr(channel, 'temp', None) is not None if channel else False

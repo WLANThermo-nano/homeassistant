@@ -3,7 +3,7 @@
 Data models for WLANThermo integration.
 Defines Python classes for parsing and representing /data and /settings API responses.
 """
-
+from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 class WlanthermoData:
@@ -11,15 +11,30 @@ class WlanthermoData:
     Container for parsed /data endpoint response.
     Holds lists of Channel and Pitmaster objects, and system info.
     """
-    def __init__(self, raw: Dict[str, Any]):
-        # Always create new objects for each update to ensure sensors update
+    def __init__(
+        self,
+        raw: Dict[str, Any] | None = None,
+        settings: "SettingsData" | None = None,
+        **kwargs,
+    ):
         import copy
-        self.channels = [Channel(copy.deepcopy(c)) for c in raw.get("channel", [])]
-        self.pitmasters = [Pitmaster(copy.deepcopy(p)) for p in raw.get("pitmaster", {}).get("pm", [])]
-        self.system = SystemInfo(copy.deepcopy(raw.get("system", {})))
-        
-"""Data models for WLANThermo /data endpoint."""
-from typing import Any, Dict, List, Optional
+
+        self.settings = settings
+
+        if raw:
+            self.channels = [
+                Channel(copy.deepcopy(c)) for c in raw.get("channel", [])
+            ]
+            self.pitmasters = [
+                Pitmaster(copy.deepcopy(p))
+                for p in raw.get("pitmaster", {}).get("pm", [])
+            ]
+            self.system = SystemInfo(copy.deepcopy(raw.get("system", {})))
+        else:
+            self.channels = []
+            self.pitmasters = []
+            self.system = SystemInfo({})
+
 
 class SystemInfo:
     """
@@ -32,7 +47,7 @@ class SystemInfo:
         self.soc: Optional[int] = int(data["soc"]) if "soc" in data else None  # State of charge
         self.charge: Optional[bool] = bool(data["charge"]) if "charge" in data else None  # Charging status
         self.rssi: int = int(data.get("rssi", 0))  # WiFi signal
-        self.online: int = int(data.get("online", 0))
+        self.online: bool = bool(data.get("online", False))
 
 class Channel:
     """

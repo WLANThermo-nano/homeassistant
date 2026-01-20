@@ -56,27 +56,29 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """
     Set up number entities for each channel and pitmaster in the config entry.
     """
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
-
-    # Device offline? → coordinator.data = None → Plattformen NICHT laden
+    entry_id = config_entry.entry_id
+    entry_data = hass.data[DOMAIN][entry_id]
+    coordinator = entry_data["coordinator"]
     if coordinator.data is None:
-        import logging
-        logging.getLogger(__name__).debug(
-            "WLANThermo Number: coordinator.data is None → skipping platform setup"
-        )
         return
+
+    data = coordinator.data
+    channels = getattr(data, "channels", []) if data else []
+    pitmasters = getattr(data, "pitmasters", []) if data else []
 
     entities = []
 
-    # Channel numbers
-    for channel in coordinator.data.channels:
+    for channel in channels:
         for field in CHANNEL_NUMBER_FIELDS:
-            entities.append(WlanthermoChannelNumber(coordinator, channel, field))
+            entities.append(
+                WlanthermoChannelNumber(coordinator, channel, field, entry_data)
+            )
 
-    # Pitmaster numbers
-    for pitmaster in coordinator.data.pitmasters:
+    for pitmaster in pitmasters:
         for field in PITMASTER_NUMBER_FIELDS:
-            entities.append(WlanthermoPitmasterNumber(coordinator, pitmaster, field))
+            entities.append(
+                WlanthermoPitmasterNumber(coordinator, pitmaster, field, entry_data)
+            )
 
     async_add_entities(entities)
 
@@ -85,40 +87,33 @@ class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
     Number entity for a channel's min/max temperature.
     Allows user to set min/max values for each channel.
     """
-    def __init__(self, coordinator, channel, field):
+    def __init__(self, coordinator, channel, field, entry_data):
         super().__init__(coordinator)
         self._channel_number = channel.number
         self._field = field
-        # Try to get a friendly device name from the coordinator or fallback
-        device_name = getattr(coordinator, 'device_name', None)
-        if not device_name:
-            entry_id = getattr(coordinator, 'config_entry', None).entry_id if hasattr(coordinator, 'config_entry') else None
-            hass = getattr(coordinator, 'hass', None)
-            if hass and entry_id:
-                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo")
-            else:
-                device_name = "WLANThermo"
-        safe_device_name = device_name.replace(" ", "_").lower()
-        self._attr_name = f"{device_name} Channel {channel.number} {field['name']}"
-        self._attr_unique_id = f"{safe_device_name}_channel_{channel.number}_{field['key']}"
-        self.entity_id = f"number.{safe_device_name}_channel_{channel.number}_{field['key']}"
+        self._api = coordinator.hass.data[DOMAIN][
+            coordinator.config_entry.entry_id
+        ]["api"]
+
+        self._attr_has_entity_name = True
+        self._attr_translation_key = f"channel_{field['key']}"
+        self._attr_translation_placeholders = {
+            "channel_number": str(channel.number)
+        }
+
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_"
+            f"channel_{channel.number}_{field['key']}"
+        )
+
         self._attr_icon = field["icon"]
         self._attr_native_min_value = field["min"]
         self._attr_native_max_value = field["max"]
         self._attr_native_step = field["step"]
         self._attr_native_unit_of_measurement = field["unit"]
         self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_device_info = entry_data["device_info"]
 
-    @property
-    def device_info(self):
-        """
-        Return device info for Home Assistant device registry.
-        """
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
 
     def _get_channel(self):
         """
@@ -130,6 +125,25 @@ class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
                 return ch
         return None
 
+    async def async_set_native_value(self, value):
+        channel = self._get_channel()
+        if not channel:
+            return
+
+        channel_data = {
+            "number": channel.number,
+            "name": channel.name,
+            "typ": channel.typ,
+            "temp": channel.temp,
+            "min": value if self._field["key"] == "min" else channel.min,
+            "max": value if self._field["key"] == "max" else channel.max,
+            "alarm": channel.alarm,
+            "color": channel.color,
+        }
+
+        await self._api.async_set_channel(channel_data)
+        await self.coordinator.async_request_refresh()
+
     @property
     def native_value(self):
         """
@@ -137,72 +151,41 @@ class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
         """
         channel = self._get_channel()
         return getattr(channel, self._field["key"], None) if channel else None
+    
+    @property
+    def available(self):
+        return self.coordinator.last_update_success
 
-    async def async_set_native_value(self, value):
-        """
-        Set the value for this channel field and update via API.
-        """
-        import logging
-        _LOGGER = logging.getLogger(__name__)
-        channel = self._get_channel()
-        if not channel:
-            _LOGGER.error(f"[WLANThermo] ChannelNumber: Channel {self._channel_number} not found for set_native_value")
-            return
-        _LOGGER.warning(f"[WLANThermo] ChannelNumber: Setting {self._field['key']} for channel {channel.number} to {value}")
-        api = self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id]["api"]
-        channel_data = {
-            "number": channel.number,
-            "name": channel.name,
-            "typ": channel.typ,
-            "min": value if self._field["key"] == "min" else channel.min,
-            "max": value if self._field["key"] == "max" else channel.max,
-            "alarm": channel.alarm,
-            "color": channel.color,
-        }
-        _LOGGER.warning(f"[WLANThermo] ChannelNumber: Sending to API: {channel_data}")
-        result = await api.async_set_channel(channel_data)
-        _LOGGER.warning(f"[WLANThermo] ChannelNumber: API result: {result}")
-        await self.coordinator.async_request_refresh()
 
 class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
     """
     Number entity for a pitmaster's value or set temperature.
-    Allows user to set pitmaster output or setpoint.
     """
-    def __init__(self, coordinator, pitmaster, field):
+    def __init__(self, coordinator, pitmaster, field, entry_data):
         super().__init__(coordinator)
+
         self._pitmaster_id = pitmaster.id
         self._field = field
-        # Try to get a friendly device name from the coordinator or fallback
-        device_name = getattr(coordinator, 'device_name', None)
-        if not device_name:
-            entry_id = getattr(coordinator, 'config_entry', None).entry_id if hasattr(coordinator, 'config_entry') else None
-            hass = getattr(coordinator, 'hass', None)
-            if hass and entry_id:
-                device_name = hass.data[DOMAIN][entry_id]["device_info"].get("name", "WLANThermo")
-            else:
-                device_name = "WLANThermo"
-        safe_device_name = device_name.replace(" ", "_").lower()
-        self._attr_name = f"{device_name} Pitmaster {pitmaster.id} {field['name']}"
-        self._attr_unique_id = f"{safe_device_name}_pitmaster_{pitmaster.id}_{field['key']}"
-        self.entity_id = f"number.{safe_device_name}_pitmaster_{pitmaster.id}_{field['key']}"
+
+        self._attr_has_entity_name = True
+        self._attr_translation_key = f"pitmaster_{field['key']}"
+        self._attr_translation_placeholders = {
+            "pitmaster_number": str(pitmaster.id + 1)
+        }
+
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_"
+            f"pitmaster_{pitmaster.id}_{field['key']}"
+        )
+
         self._attr_icon = field["icon"]
         self._attr_native_min_value = field["min"]
         self._attr_native_max_value = field["max"]
         self._attr_native_step = field["step"]
         self._attr_native_unit_of_measurement = field["unit"]
         self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_device_info = entry_data["device_info"]
 
-    @property
-    def device_info(self):
-        """
-        Return device info for Home Assistant device registry.
-        """
-        entry_id = self.coordinator.config_entry.entry_id if hasattr(self.coordinator, 'config_entry') else None
-        hass = getattr(self.coordinator, 'hass', None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
 
     def _get_pitmaster(self):
         """
@@ -214,14 +197,6 @@ class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
                 return pm
         return None
 
-    @property
-    def native_value(self):
-        """
-        Return the current value of the field for this pitmaster.
-        """
-        pitmaster = self._get_pitmaster()
-        return getattr(pitmaster, self._field["key"], None) if pitmaster else None
-
     async def async_set_native_value(self, value):
         """
         Set the value for this pitmaster field and update via API.
@@ -232,8 +207,7 @@ class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
         if not pitmaster:
             _LOGGER.error(f"[WLANThermo] PitmasterNumber: Pitmaster {self._pitmaster_id} not found for set_native_value")
             return
-        _LOGGER.warning(f"[WLANThermo] PitmasterNumber: Setting {self._field['key']} for pitmaster {pitmaster.id} to {value}")
-        api = self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id]["api"]
+        #_LOGGER.warning(f"[WLANThermo] PitmasterNumber: Setting {self._field['key']} for pitmaster {pitmaster.id} to {value}")
         pitmaster_data = {
             "id": pitmaster.id,
             "channel": pitmaster.channel,
@@ -242,7 +216,19 @@ class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
             "set": value if self._field["key"] == "set" else pitmaster.set,
             "typ": pitmaster.typ,
         }
-        _LOGGER.warning(f"[WLANThermo] PitmasterNumber: Sending to API: {pitmaster_data}")
-        result = await api.async_set_pitmaster(pitmaster_data)
-        _LOGGER.warning(f"[WLANThermo] PitmasterNumber: API result: {result}")
+        #_LOGGER.warning(f"[WLANThermo] PitmasterNumber: Sending to API: {pitmaster_data}")
+        result = await self._api.async_set_pitmaster(pitmaster_data)
+        #_LOGGER.warning(f"[WLANThermo] PitmasterNumber: API result: {result}")
         await self.coordinator.async_request_refresh()
+
+    @property
+    def native_value(self):
+        """
+        Return the current value of the field for this pitmaster.
+        """
+        pitmaster = self._get_pitmaster()
+        return getattr(pitmaster, self._field["key"], None) if pitmaster else None
+    
+    @property
+    def available(self):
+        return self.coordinator.last_update_success

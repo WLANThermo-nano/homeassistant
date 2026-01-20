@@ -1,76 +1,76 @@
 """
 Light platform for WLANThermo integration.
-Exposes each channel's color as a Home Assistant light entity for configuration.
-This is a workaround to provide a color picker in the UI for channel colors.
+Exposes each channel's color as a Home Assistant light entity.
 """
 
 from homeassistant.components.light import LightEntity, ColorMode
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import EntityCategory
+
 from .const import DOMAIN
+
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """
     Set up light entities for each channel in the config entry.
     """
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
+    entry_id = config_entry.entry_id
+    entry_data = hass.data[DOMAIN][entry_id]
 
-    # Device offline? → coordinator.data = None → Plattformen NICHT laden
-    if coordinator.data is None:
-        import logging
-        logging.getLogger(__name__).debug(
-            "WLANThermo Light: coordinator.data is None → skipping platform setup"
-        )
-        return
+    coordinator = entry_data["coordinator"]
 
-    entities = []
-    for channel in coordinator.data.channels:
-        entities.append(WlanthermoChannelColorLight(coordinator, channel))
+    entity_store = entry_data.setdefault("entities", {})
+    entity_store.setdefault("lights", set())
 
-    async_add_entities(entities)
+    async def _async_discover_lights():
+        if not coordinator.data:
+            return
+
+        new_entities = []
+
+        for channel in getattr(coordinator.data, "channels", []):
+            ch_id = channel.number
+
+            if ch_id not in entity_store["lights"]:
+                new_entities.append(
+                    WlanthermoChannelColorLight(
+                        coordinator,
+                        channel,
+                        entry_data,
+                    )
+                )
+                entity_store["lights"].add(ch_id)
+
+        if new_entities:
+            async_add_entities(new_entities)
+
+    await _async_discover_lights()
+    coordinator.async_add_listener(_async_discover_lights)
 
 
 class WlanthermoChannelColorLight(CoordinatorEntity, LightEntity):
-    """
-    Light entity representing the color of a WLANThermo channel.
-    Allows the user to set the channel's color via Home Assistant.
-    """
     _attr_supported_color_modes = {ColorMode.RGB}
+    _attr_color_mode = ColorMode.RGB
     _attr_entity_category = EntityCategory.CONFIG
+    _attr_has_entity_name = True
 
-    def __init__(self, coordinator, channel):
-        """
-        Initialize the light entity for a specific channel.
-        """
+    def __init__(self, coordinator, channel, entry_data):
         super().__init__(coordinator)
-        self._coordinator = coordinator
+
         self._channel_number = channel.number
+        self._api = entry_data["api"]
 
-        # Try to get a friendly device name from the coordinator or fallback
-        device_name = getattr(coordinator, "device_name", None)
-        if not device_name:
-            entry_id = getattr(coordinator, "config_entry", None).entry_id \
-                if hasattr(coordinator, "config_entry") else None
-            hass = getattr(coordinator, "hass", None)
-            if hass and entry_id:
-                device_name = hass.data[DOMAIN][entry_id]["device_info"].get(
-                    "name", "WLANThermo"
-                )
-            else:
-                device_name = "WLANThermo"
-
-        safe_device_name = device_name.replace(" ", "_").lower()
-
-        self._attr_name = f"{device_name} Channel {channel.number} Color"
-        self._attr_unique_id = f"{safe_device_name}_channel_{channel.number}_color"
-        self._attr_icon = "mdi:palette"
-        self._attr_color_mode = ColorMode.RGB
+        self._attr_name = f"Channel {channel.number} Color"
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_channel_{channel.number}_color"
+        )
+        self._attr_device_info = entry_data["device_info"]
 
     def _get_channel(self):
         """
         Helper to get the current channel object from the coordinator data.
         """
-        for ch in getattr(self._coordinator.data, "channels", []):
+        for ch in getattr(self.coordinator.data, "channels", []):
             if ch.number == self._channel_number:
                 return ch
         return None
@@ -80,21 +80,10 @@ class WlanthermoChannelColorLight(CoordinatorEntity, LightEntity):
         """
         Entity is available if the channel exists in the latest data.
         """
-        if not self.coordinator.last_update_success:
-            return False
-        return self._get_channel() is not None
-
-    @property
-    def device_info(self):
-        """
-        Return device info for Home Assistant device registry.
-        """
-        entry_id = self.coordinator.config_entry.entry_id \
-            if hasattr(self.coordinator, "config_entry") else None
-        hass = getattr(self.coordinator, "hass", None)
-        if hass and entry_id:
-            return hass.data[DOMAIN][entry_id]["device_info"]
-        return None
+        return (
+            self.coordinator.last_update_success
+            and self._get_channel() is not None
+        )
 
     @property
     def is_on(self):
@@ -109,9 +98,9 @@ class WlanthermoChannelColorLight(CoordinatorEntity, LightEntity):
         Return the current color of the channel as an RGB tuple.
         """
         channel = self._get_channel()
-
         hex_color = getattr(channel, "color", "#000000") if channel else "#000000"
         hex_color = hex_color.lstrip("#")
+
         try:
             # Convert hex color string to RGB tuple
             return (
@@ -127,33 +116,29 @@ class WlanthermoChannelColorLight(CoordinatorEntity, LightEntity):
         Handle turning on the light (set channel color).
         Updates the channel color via the API and refreshes coordinator data.
         """
-        api = self.coordinator.hass.data[DOMAIN][
-            self.coordinator.config_entry.entry_id
-        ]["api"]
-
         channel = self._get_channel()
         if not channel:
             return
 
-        # Convert RGB tuple to hex string if provided
+        # Convert RGB tuple to hex string
         if "rgb_color" in kwargs:
             r, g, b = kwargs["rgb_color"]
-            hex_value = f"#{r:02X}{g:02X}{b:02X}"
+            color = f"#{r:02X}{g:02X}{b:02X}"
         else:
-            hex_value = getattr(channel, "color", "#000000")
+            color = channel.color
 
-        # Prepare channel data for API update
-        channel_data = {
+        payload = {
             "number": channel.number,
             "name": channel.name,
             "typ": channel.typ,
+            "temp": channel.temp,
             "min": channel.min,
             "max": channel.max,
             "alarm": channel.alarm,
-            "color": hex_value,
+            "color": color,
         }
 
-        await api.async_set_channel(channel_data)
+        await self._api.async_set_channel(payload)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):
