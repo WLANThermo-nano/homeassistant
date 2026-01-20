@@ -38,7 +38,7 @@
       }
     }
   },
-    "alarm": {
+  "alarm": {
     "off": "Off",
     "push": "Push",
     "buzzer": "Buzzer",
@@ -46,24 +46,60 @@
   },
   "entity": {
     "sensor": {
-      "battery_charging": {"name": "Battery Charging"},
-      "battery_level": {"name": "Battery Level"},
-      "temperature_unit": {"name": "Temperature Unit"},
-      "cloud_status": {"name": "Cloud status"},
-      "channel": {"name": "Channel"},
-      "channel_temperature": {"name": "Channel {channel_number} Temperature"},
-      "channel_time_left": {"name": "Channel {channel_number} Time Left"},
-      "system_time": {"name": "System Time"},
-      "device_info": {"name": "Device Info"},
-      "channel_entity": {"name": "Channel {channel_number} {field_name}"},
-      "pitmaster_value": {"name": "Pitmaster {pitmaster_id} Value"},
-      "min_temperature": {"name": "Min Temperature"},
-      "max_temperature": {"name": "Max Temperature"}
+      "battery_charging": { "name": "Battery Charging" },
+      "battery_level": { "name": "Battery Level" },
+      "temperature_unit": { "name": "Temperature Unit" },
+      "cloud_url": {"name": "Cloud URL"},
+      "cloud_status": {
+        "name": "Cloud Status",
+        "state": {
+          "not_connected": "Not connected",
+          "standby": "Standby",
+          "connected": "Connected"
+        }
+      },
+      "channel": { "name": "Channel" },
+      "channel_temperature": { "name": "Channel {channel_number} Temperature" },
+      "channel_time_left": { "name": "Channel {channel_number} Time Left" },
+      "channel_alarm": { "name": "Channel {channel_number} Alarm Mode" },
+      "channel_typ": { "name": "Channel {channel_number} Probe Type" },
+      "system_time": { "name": "System Time" },
+      "device_info": { "name": "Device Info" },
+      "channel_entity": { "name": "Channel {channel_number} {field_name}" },
+      "pitmaster_value": {"name": "Pitmaster {pitmaster_number} Power"},
+      "pitmaster_temperature": {"name": "Pitmaster {pitmaster_number} Temperature"},
+      "pitmaster_typ": {
+        "name": "Pitmaster {pitmaster_number} Mode",
+        "state": {
+          "auto": "Automatic",
+          "manual": "Manual",
+          "off": "Off"
+        }
+      },
+      "pitmaster_pid": {"name": "Pitmaster {pitmaster_number} PID Profile"},
+      "pitmaster_channel": {"name": "Pitmaster {pitmaster_number} Channel"},
+      "min_temperature": { "name": "Min Temperature" },
+      "max_temperature": { "name": "Max Temperature" }
+    },
+    "number": {
+      "channel_min": { "name": "Channel {channel_number} Minimum" },
+      "channel_max": { "name": "Channel {channel_number} Maximum" },
+      "pitmaster_value": { "name": "Pitmaster {pitmaster_number} Power" },
+      "pitmaster_set": { "name": "Pitmaster {pitmaster_number} Target Temperature" }
+    },
+    "light": {
+      "channel_color": { "name": "Channel {channel_number} Color" }
+    },
+    "select": {
+      "channel_alarm": { "name": "Channel {channel_number} Alarm Mode" },
+      "channel_typ": { "name": "Channel {channel_number} Probe Type" },
+      "pitmaster_typ": { "name": "Pitmaster {pitmaster_number} Mode" },
+      "pitmaster_pid": { "name": "Pitmaster {pitmaster_number} PID Profile" },
+      "pitmaster_channel": { "name": "Pitmaster {pitmaster_number} Channel" }
+    },
+    "text": {
+      "channel_color": { "name": "Channel {channel_number} Color (Hex)" },
+      "channel_name": { "name": "Channel {channel_number} Name" }
     }
-  },
-  "system_online": {
-    "0": "Not connected",
-    "1": "Standby",
-    "2": "Connected"
   }
 }
