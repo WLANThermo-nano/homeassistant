@@ -431,7 +431,7 @@ views:
                                 {% endif %};
                             }
                       - type: custom:mushroom-entity-card
-                        entity: sensor.wlanthermo_cloud_url_2
+                        entity: sensor.wlanthermo_cloud_link
                         name: Cloud URL
                         icon: mdi:web
                         card_mod:
@@ -440,7 +440,7 @@ views:
                               border-radius: 12px;
                               padding: 8px;
                               background-color:
-                                {% set v = states('sensor.wlanthermo_cloud_url_2') %}
+                                {% set v = states('sensor.wlanthermo_cloud_link') %}
                                 {% if v and v != 'unavailable' %}
                                   rgba(0,200,0,0.3)
                                 {% else %}
