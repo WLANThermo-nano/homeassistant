@@ -137,19 +137,19 @@ button_card_templates:
                 [[[
                   const id = entity.entity_id.match(/kanal_(\d+)_/)[1];
                   const dev = variables.device_name;
-                  return `select.${dev}_kanal_${id}_alarm`;
+                  return `select.${dev}_kanal_${id}_alarmmodus`;
                 ]]]
               - |
                 [[[
                   const id = entity.entity_id.match(/kanal_(\d+)_/)[1];
                   const dev = variables.device_name;
-                  return `light.${dev}_kanal_${id}_color`;
+                  return `light.${dev}_kanal_${id}_farbe`;
                 ]]]
               - |
                 [[[
                   const id = entity.entity_id.match(/kanal_(\d+)_/)[1];
                   const dev = variables.device_name;
-                  return `select.${dev}_kanal_${id}_typ`;
+                  return `select.${dev}_kanal_${id}_sensortyp`;
                 ]]]
   wlt_pitmaster_button:
     show_icon: true
@@ -245,13 +245,13 @@ button_card_templates:
                 [[[
                   const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
                   const dev = variables.device_name;
-                  return `number.${dev}_pitmaster_${id}_value`;
+                  return `number.${dev}_pitmaster_${id}_leistung`;
                 ]]]
               - |
                 [[[
                   const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
                   const dev = variables.device_name;
-                  return `number.${dev}_pitmaster_${id}_set`;
+                  return `number.${dev}_pitmaster_${id}_solltemperatur`;
                 ]]]
               - |
                 [[[
@@ -263,18 +263,19 @@ button_card_templates:
                 [[[
                   const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
                   const dev = variables.device_name;
-                  return `select.${dev}_pitmaster_${id}_pid`;
+                  return `select.${dev}_pitmaster_${id}_pid_profil`;
                 ]]]
               - |
                 [[[
                   const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
                   const dev = variables.device_name;
-                  return `select.${dev}_pitmaster_${id}_typ`;
+                  return `select.${dev}_pitmaster_${id}_modus`;
                 ]]]
 views:
   - title: WLANThermo
     path: wlanthermo
     type: panel
+    icon: mdi:grill
     cards:
       - type: grid
         columns: 1
