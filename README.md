@@ -1,6 +1,6 @@
 # WLANThermo – Home Assistant Integration
 
-![Version](https://img.shields.io/badge/version-0.2.0-informational)
+![Version](https://img.shields.io/badge/version-0.2.1-informational)
 ![Lizenz](https://img.shields.io/badge/license-MIT-green)
 ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025%2B-blue)
 [![Support](https://img.shields.io/badge/support-WLANThermo%20Forum-lightgrey)](https://wlanthermo.de/forums/)

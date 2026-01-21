@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.1] - 2026-01-21
+
+### Changed
+- Improved sensor and attribute structure for better performance and clarity.
+- Optimized translations for German and English languages.
+- Updated dashboard layout and styling for a more intuitive user experience.
+- Various bug fixes and minor optimizations throughout the integration.
+- Enhanced compatibility and stability across different Home Assistant setups.
+
 ## [0.2.0] - 2026-01-21
 
 ### Changed
