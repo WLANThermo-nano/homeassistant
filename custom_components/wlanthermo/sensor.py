@@ -100,7 +100,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                 ])
             if hasattr(settings, "iot"):
                 new_entities.extend([
-                    WlanthermoIotInfoSensor(coordinator, entry_data),
                     WlanthermoCloudLinkSensor(coordinator, entry_data),
                 ])
 
@@ -395,7 +394,6 @@ class WlanthermoSystemGetUpdateSensor(CoordinatorEntity, SensorEntity):
 
         return {
             "version": getattr(system, "version", None),
-            "unit": getattr(system, "unit", None),
             "autoupdate": getattr(system, "autoupd", None),
         }
 
@@ -445,20 +443,6 @@ class WlanthermoCloudLinkSensor(CoordinatorEntity, SensorEntity):
             return f"{url}?api_token={token}"
 
         return url
-
-    @property
-    def extra_state_attributes(self):
-        """
-        Return extra attributes for diagnostics (cloud link status, URL, token).
-        """
-        iot = self._iot
-        if not iot:
-            return {}
-        return {
-            "CLon": getattr(iot, "CLon", None),
-            "CLurl": getattr(iot, "CLurl", None),
-            "CLtoken": getattr(iot, "CLtoken", None),
-        }
     
     @property
     def available(self):
@@ -610,13 +594,16 @@ class WlanthermoSystemChargeSensor(CoordinatorEntity, BinarySensorEntity):
 
     @property
     def icon(self) -> str:
+        system = getattr(self.coordinator.data, "system", None)
+        soc = getattr(system, "soc", None) if system else None
+        
         if self.is_on is None:
             return "mdi:battery-unknown"
-        return (
-            "mdi:battery-charging"
-            if self.is_on
-            else "mdi:battery-medium"
-        )
+        if self.is_on:
+            return "mdi:battery-charging"
+        if soc == 100:
+            return "mdi:power-plug-battery"
+        return "mdi:battery-medium"
     
     @property
     def available(self) -> bool:
@@ -707,7 +694,30 @@ class WlanthermoCloudOnlineSensor(CoordinatorEntity, SensorEntity):
                 return "mdi:cloud-off"
             case _:
                 return "mdi:cloud-question-outline"
-            
+     
+    @property
+    def extra_state_attributes(self):
+        """
+        Additional IoT diagnostics.
+        """
+        api = getattr(self.coordinator, "api", None)
+        settings = getattr(api, "settings", None) if api else None
+        iot = getattr(settings, "iot", None) if settings else None
+
+        if not iot:
+            return {}
+
+        return {
+            "cloud_enabled": getattr(iot, "CLon", None),
+            "cloud_url": getattr(iot, "CLurl", None),
+            "cloud_interval": getattr(iot, "CLint", None),
+            "mqtt_enabled": getattr(iot, "PMQon", None),
+            "mqtt_host": getattr(iot, "PMQhost", None),
+            "mqtt_port": getattr(iot, "PMQport", None),
+            "mqtt_qos": getattr(iot, "PMQqos", None),
+            "mqtt_interval": getattr(iot, "PMQint", None),
+        }
+           
     @property
     def available(self) -> bool:
         return self.coordinator.last_update_success
@@ -778,9 +788,8 @@ class WlanthermoSystemInfoSensor(CoordinatorEntity, SensorEntity):
     Diagnostic sensor exposing system information
     from /settings.system.
     """
-
     _attr_has_entity_name = True
-    _attr_name = "System Info"
+    _attr_translation_key = "system_info"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_icon = "mdi:cog-outline"
 
@@ -804,10 +813,10 @@ class WlanthermoSystemInfoSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> str | None:
         """
-        Use temperature unit as primary state (informational).
+        Use host as primary state (informational).
         """
         system = self._system
-        return getattr(system, "unit", None) if system else None
+        return getattr(system, "host", None) if system else None
 
     @property
     def extra_state_attributes(self):
@@ -820,10 +829,13 @@ class WlanthermoSystemInfoSensor(CoordinatorEntity, SensorEntity):
 
         return {
             "ap": getattr(system, "ap", None),
-            "host": getattr(system, "host", None),
+            "unit": getattr(system, "unit", None),
             "language": getattr(system, "language", None),
+            "version": getattr(system, "version", None),
             "getupdate": getattr(system, "getupdate", None),
             "autoupd": getattr(system, "autoupd", None),
+            "prerelease": getattr(system, "prerelease", None),
+            "hwversion": getattr(system, "hwversion", None),
         }
 
     @property
@@ -831,59 +843,44 @@ class WlanthermoSystemInfoSensor(CoordinatorEntity, SensorEntity):
         return self.coordinator.last_update_success
 
 
-class WlanthermoIotInfoSensor(CoordinatorEntity, SensorEntity):
-    """
-    Diagnostic sensor exposing IoT / cloud information
-    from /settings.iot.
-    """
-    _attr_has_entity_name = True
-    _attr_translation_key = "cloud_url"
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_icon = "mdi:cloud-outline"
+# class WlanthermoIotInfoSensor(CoordinatorEntity, SensorEntity):
+#     """
+#     Diagnostic sensor exposing IoT / cloud information
+#     from /settings.iot.
+#     """
+#     _attr_has_entity_name = True
+#     _attr_translation_key = "cloud_url"
+#     _attr_entity_category = EntityCategory.DIAGNOSTIC
+#     _attr_icon = "mdi:cloud-outline"
 
-    def __init__(self, coordinator, entry_data):
-        super().__init__(coordinator)
-        self._attr_unique_id = f"{coordinator.config_entry.entry_id}_cloud_url"
-        self._attr_device_info = entry_data["device_info"]
+#     def __init__(self, coordinator, entry_data):
+#         super().__init__(coordinator)
+#         self._attr_unique_id = f"{coordinator.config_entry.entry_id}_cloud_url"
+#         self._attr_device_info = entry_data["device_info"]
 
-    @property
-    def _iot(self):
-        """
-        Always return current settings.iot from the API.
-        """
-        api = self.coordinator.hass.data[DOMAIN][
-            self.coordinator.config_entry.entry_id
-        ].get("api")
+#     @property
+#     def _iot(self):
+#         """
+#         Always return current settings.iot from the API.
+#         """
+#         api = self.coordinator.hass.data[DOMAIN][
+#             self.coordinator.config_entry.entry_id
+#         ].get("api")
 
-        settings = getattr(api, "settings", None)
-        return getattr(settings, "iot", None) if settings else None
+#         settings = getattr(api, "settings", None)
+#         return getattr(settings, "iot", None) if settings else None
 
-    @property
-    def native_value(self) -> str | None:
-        """
-        Return the configured cloud URL (if any).
-        """
-        iot = self._iot
-        return getattr(iot, "CLurl", None) if iot else None
+#     @property
+#     def native_value(self) -> str | None:
+#         """
+#         Return the configured cloud URL (if any).
+#         """
+#         iot = self._iot
+#         return getattr(iot, "CLurl", None) if iot else None
 
-    @property
-    def extra_state_attributes(self):
-        """
-        Additional IoT diagnostics.
-        """
-        iot = self._iot
-        if not iot:
-            return {}
-
-        return {
-            "CLon": getattr(iot, "CLon", None),
-            "CLurl": getattr(iot, "CLurl", None),
-            "CLtoken": getattr(iot, "CLtoken", None),
-        }
-
-    @property
-    def available(self) -> bool:
-        return self.coordinator.last_update_success
+#     @property
+#     def available(self) -> bool:
+#         return self.coordinator.last_update_success
 
     
 class WlanthermoChannelSensor(CoordinatorEntity, SensorEntity):

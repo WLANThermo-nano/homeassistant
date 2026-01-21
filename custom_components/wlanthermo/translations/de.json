@@ -46,51 +46,36 @@
   },
   "entity": {
     "sensor": {
+      "device_info": {"name": "Geräte Info"},
+      "system_time": {"name": "System Zeit"},
+      "system_info": {"name": "System Info"},
+      "system_status": {"name": "System Status",
+                "state": {"offline": "Offline","online": "Online"}
+              },
+      "system_update": {"name": "System Update verfügbar"},
       "battery_charging": {"name": "Ladevorgang Batterie"},
       "battery_level": {"name": "Batteriestand"},
-      "temperature_unit": {"name": "Temperatureinheit"},
       "cloud_url": {"name": "Cloud URL"},
       "cloud_link": {"name": "Cloud Link"},
-      "cloud_status": {
-        "name": "Cloud-Status",
-        "state": {
-          "not_connected": "Nicht verbunden",
-          "standby": "Standby",
-          "connected": "Verbunden"
-        }
-      },
-      "system_status": {
-        "name": "System Status",
-        "state": {
-          "offline": "Offline",
-          "online": "Online"
-        }
-      },
-      "system_update": {
-        "name": "System Update verfügbar"
-      },
+      "cloud_status": {"name": "Cloud-Status",
+                "state": {"not_connected": "Nicht verbunden","standby": "Standby","connected": "Verbunden"}
+              },
       "channel": {"name": "Kanal"},
       "channel_temperature": {"name": "Kanal {channel_number} Temperatur"},
       "channel_time_left": {"name": "Kanal {channel_number} Restzeit"},
       "channel_alarm": {"name": "Kanal {channel_number} Alarmmodus"},
       "channel_typ": {"name": "Kanal {channel_number} Sensortyp"},
-      "system_time": {"name": "System Zeit"},
-      "device_info": {"name": "Geräte Info"},
       "channel_entity": {"name": "Kanal {channel_number} {field_name}"},
+      "temperature_unit": {"name": "Temperatureinheit"},
+      "min_temperature": {"name": "Minimale Temperatur"},
+      "max_temperature": {"name": "Maximale Temperatur"},
       "pitmaster_value": {"name": "Pitmaster {pitmaster_number} Leistung"},
       "pitmaster_temperature": {"name": "Pitmaster {pitmaster_number} Temperatur"},
-      "pitmaster_typ": {
-        "name": "Pitmaster {pitmaster_number} Modus",
-        "state": {
-          "auto": "Automatik",
-          "manual": "Manuell",
-          "off": "Aus"
-        }
-      },
+      "pitmaster_typ": {"name": "Pitmaster {pitmaster_number} Modus",
+                "state": {"auto": "Automatik","manual": "Manuell","off": "Aus"}
+              },
       "pitmaster_pid": {"name": "Pitmaster {pitmaster_number} PID Profil"},
-      "pitmaster_channel": {"name": "Pitmaster {pitmaster_number} Kanal"},
-      "min_temperature": {"name": "Minimale Temperatur"},
-      "max_temperature": {"name": "Maximale Temperatur"}
+      "pitmaster_channel": {"name": "Pitmaster {pitmaster_number} Kanal"}
     },
     "number": {
       "channel_min": {"name": "Kanal {channel_number} Minimum"},
@@ -109,7 +94,6 @@
       "pitmaster_channel": {"name": "Pitmaster {pitmaster_number} Kanal"}
     },
     "text": {
-      "channel_color": {"name": "Kanal {channel_number} Farbe (Hex)"},
       "channel_name": {"name": "Kanal {channel_number} Name"}
     }
   }

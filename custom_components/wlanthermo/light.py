@@ -53,6 +53,8 @@ class WlanthermoChannelColorLight(CoordinatorEntity, LightEntity):
     _attr_color_mode = ColorMode.RGB
     _attr_entity_category = EntityCategory.CONFIG
     _attr_has_entity_name = True
+    _attr_icon = "mdi:palette"
+
 
     def __init__(self, coordinator, channel, entry_data):
         super().__init__(coordinator)
