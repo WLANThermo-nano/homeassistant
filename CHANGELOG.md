@@ -1,4 +1,3 @@
-
 # Changelog
 
 ## [0.1.4] - 2026-01-16
@@ -59,3 +58,12 @@
 - Consistent use of translation_key and translation_placeholders for all dynamic entity names.
 - Sensors and entities now use correct EntityCategory (SENSOR, DIAGNOSTIC, CONFIG).
 - Improved device_info attachment for all entities, ensuring proper grouping.
+
+## [Unreleased] - 2026-01-21
+
+### Changed
+- Merged major updates from `dev` branch:
+  - Entity IDs and dashboard references updated from `channel` to `kanal` and from `value` to `leistung` for pitmasters.
+  - Cloud URL entity now uses `sensor.wlanthermo_cloud_url_2`.
+  - Button card templates and dashboard YAML updated for new entity names and improved translation/icon support.
+  - Various fixes for translation, icons, and dashboard consistency.

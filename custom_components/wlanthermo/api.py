@@ -4,10 +4,10 @@ Provides asynchronous methods to interact with the WLANThermo device's REST API.
 Handles data retrieval and configuration updates for channels and pitmasters.
 """
 
-import aiohttp
 import async_timeout
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import logging
 
 class WLANThermoApi:
     """
@@ -26,10 +26,8 @@ class WLANThermoApi:
         self._port = port
         self._path_prefix = path_prefix.rstrip("/")
         self._base_url = f"http://{host}:{port}{self._path_prefix}"
-        self._session = None  # always our own session
 
     async def _get(self, endpoint):
-        import logging
         _LOGGER = logging.getLogger(__name__)
         url = f"{self._base_url}{endpoint}"
 
@@ -73,25 +71,22 @@ class WLANThermoApi:
     async def async_set_channel(self, channel_data: dict, method: str = "POST") -> bool:
         """
         Send channel configuration to the device.
-        :param channel_data: dict with channel configuration
-        :param method: HTTP method ('POST', 'PUT', 'PATCH')
-        :return: True if successful, False otherwise
         """
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession()
-
+        session = async_get_clientsession(self._hass)
         url = f"{self._base_url}/setchannels"
         headers = {"Content-Type": "application/json"}
-        # Add authentication if needed (e.g., token)
-        # headers["Authorization"] = f"Bearer {self._token}"
+
         try:
             async with async_timeout.timeout(10):
-                req = getattr(self._session, method.lower())
-                async with req(url, json=channel_data, headers=headers) as resp:
+                request = getattr(session, method.lower())
+                async with request(url, json=channel_data, headers=headers) as resp:
                     text = await resp.text()
                     return resp.status == 200 and text.strip().lower() == "true"
         except Exception as err:
+            _LOGGER = logging.getLogger(__name__)
+            _LOGGER.debug("set_channel failed: %s", err)
             return False
+
 
     async def async_set_pitmaster(self, pitmaster_data: dict, method: str = "POST") -> bool:
         """
@@ -100,9 +95,7 @@ class WLANThermoApi:
         :param method: HTTP method ('POST' or 'PUT')
         :return: True if successful, False otherwise
         """
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession()
-
+        session = async_get_clientsession(self._hass)
         url = f"{self._base_url}/setpitmaster"
         headers = {"Content-Type": "application/json"}
         # Add authentication if needed (e.g., token)
@@ -110,10 +103,12 @@ class WLANThermoApi:
         try:
             async with async_timeout.timeout(10):
                 # Select HTTP method dynamically
-                req = getattr(self._session, method.lower())
+                req = getattr(session, method.lower())
                 # The API expects a list of pitmaster objects
                 async with req(url, json=[pitmaster_data], headers=headers) as resp:
                     text = await resp.text()
                     return resp.status == 200 and text.strip().lower() == "true"
         except Exception as err:
+            _LOGGER = logging.getLogger(__name__)
+            _LOGGER.debug("set_pitmaster failed: %s", err)
             return False

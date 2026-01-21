@@ -6,16 +6,13 @@ Guides the user through device connection, authentication, and device info retri
 """
 
 from homeassistant import config_entries
-from .const import DOMAIN, MODELS
+from .const import DOMAIN
 import voluptuous as vol
 from homeassistant.core import callback
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.helpers.selector  import (
     BooleanSelector,
 )
-import aiohttp
-from .api import WLANThermoApi
-from .data import SettingsData
 
 CONF_PATH_PREFIX = "path_prefix"
 
@@ -25,6 +22,33 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     Guides the user through the initial setup and device info retrieval.
     """
     VERSION = 1
+    def _schema(self, user_input=None):
+        user_input = user_input or {}
+
+        schema = {
+            vol.Required("device_name", default=user_input.get("device_name", "WLANThermo")): str,
+            vol.Required(CONF_HOST, default=user_input.get(CONF_HOST, "")): str,
+            vol.Required(CONF_PORT, default=user_input.get(CONF_PORT, 80)): int,
+            vol.Required(CONF_PATH_PREFIX, default=user_input.get(CONF_PATH_PREFIX, "/")): str,
+            vol.Required(
+                "show_inactive_unavailable",
+                default=user_input.get("show_inactive_unavailable", True),
+                description={"translation_key": "show_inactive_unavailable"}
+            ): BooleanSelector({}),
+            vol.Required(
+                "auth_required",
+                default=user_input.get("auth_required", False),
+                description={"translation_key": "auth_required"}
+            ): BooleanSelector({}),
+        }
+
+        if user_input.get("auth_required"):
+            schema.update({
+                vol.Required("username", default=user_input.get("username", "")): str,
+                vol.Required("password", default=user_input.get("password", "")): str,
+            })
+
+        return vol.Schema(schema)
 
     async def async_step_user(self, user_input=None):
         """
@@ -32,62 +56,24 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         Validates required fields and optionally prompts for authentication.
         """
         errors = {}
-        show_auth_fields = False
+
         if user_input is not None:
-            # Validate required fields
-            if not user_input.get(CONF_HOST):
-                errors[CONF_HOST] = "required"
-            if not user_input.get(CONF_PORT):
-                errors[CONF_PORT] = "required"
-            if not user_input.get(CONF_PATH_PREFIX):
-                errors[CONF_PATH_PREFIX] = "required"
-            if user_input.get("auth_required", False):
-                show_auth_fields = True
+            if user_input.get("auth_required"):
                 if not user_input.get("username"):
                     errors["username"] = "required"
                 if not user_input.get("password"):
                     errors["password"] = "required"
+
             if not errors:
-                # Store user input in context and proceed to device info step
                 self.context["user_input"] = user_input
                 return await self.async_step_device_info()
 
-        # Define the schema for the user form
-        base_schema = {
-            vol.Required("device_name", default="WLANThermo"): str,
-            vol.Required(CONF_HOST): str,
-            vol.Required(CONF_PORT, default=80): int,
-            vol.Required(CONF_PATH_PREFIX, default="/"): str,
-            vol.Required(
-                "show_inactive_unavailable",
-                default=True,
-                description={"translation_key": "show_inactive_unavailable"}
-            ): BooleanSelector({}),
-            vol.Required(
-                "auth_required",
-                default=False,
-                description={
-                    "suggested_value": False,
-                    "translation_key": "auth_required"
-                }
-            ): BooleanSelector({}),
-            vol.Optional("username", default=""): str,
-            vol.Optional("password", default=""): str,
-        }
-        data_schema = vol.Schema(base_schema)
-        # Only require username/password if auth_required is true
-        if user_input is not None and user_input.get("auth_required", False):
-            if not user_input.get("username"):
-                errors["username"] = "required"
-            if not user_input.get("password"):
-                errors["password"] = "required"
-
         return self.async_show_form(
             step_id="user",
-            data_schema=data_schema,
+            data_schema=self._schema(user_input),
             errors=errors,
-            description_placeholders=None,
         )
+
 
     @staticmethod
     @callback
@@ -100,59 +86,83 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_device_info(self, user_input=None):
         """
         Second step: fetch device info from the device and confirm connection.
-        If connection fails, show error and let user retry.
         """
-        # Get user_input from context
+        from .api import WLANThermoApi
+        from .data import SettingsData
+
         user_input = self.context.get("user_input")
+
         device_name = user_input.get("device_name", "WLANThermo")
         host = user_input[CONF_HOST]
         port = user_input[CONF_PORT]
         path_prefix = user_input[CONF_PATH_PREFIX]
-        # Fetch /settings from the device to verify connection and get info
-        async with aiohttp.ClientSession() as session:
-            api = WLANThermoApi(host, port, path_prefix)
-            api.set_session(session)
+        auth_required = user_input.get("auth_required", False)
+
+        #async with aiohttp.ClientSession() as session:
+        api = WLANThermoApi(
+            self.hass,
+            host,
+            port,
+            path_prefix,
+        )
+
+        if auth_required:
+            api.set_auth(
+                user_input.get("username"),
+                user_input.get("password"),
+            )
+
+        try:
             settings_json = await api.get_settings()
+        except Exception:
+            settings_json = None
+
         if not settings_json:
-            # Show form again with error if device is unreachable
+            schema = {
+                vol.Required("device_name", default=device_name): str,
+                vol.Required(CONF_HOST, default=host): str,
+                vol.Required(CONF_PORT, default=port): int,
+                vol.Required(CONF_PATH_PREFIX, default=path_prefix): str,
+                vol.Required(
+                    "show_inactive_unavailable",
+                    default=user_input.get("show_inactive_unavailable", True),
+                    description={"translation_key": "show_inactive_unavailable"},
+                ): BooleanSelector({}),
+                vol.Required(
+                    "auth_required",
+                    default=auth_required,
+                    description={"translation_key": "auth_required"},
+                ): BooleanSelector({}),
+            }
+
+            if auth_required:
+                schema[vol.Required("username")] = str
+                schema[vol.Required("password")] = str
+
             return self.async_show_form(
                 step_id="user",
-                data_schema=vol.Schema({
-                    vol.Required("device_name", default=device_name): str,
-                    vol.Required(CONF_HOST, default=host): str,
-                    vol.Required(CONF_PORT, default=port): int,
-                    vol.Required(CONF_PATH_PREFIX, default=path_prefix): str,
-                    vol.Required(
-                        "show_inactive_unavailable",
-                        default=True,
-                        description={"translation_key": "show_inactive_unavailable"}
-                    ): BooleanSelector({}),
-                    vol.Required(
-                        "auth_required",
-                        default=False,
-                        description={
-                            "suggested_value": False,
-                            "translation_key": "auth_required"
-                        }
-                    ): BooleanSelector({}),
-                    vol.Optional("username", default=""): str,
-                    vol.Optional("password", default=""): str,
-                }),
+                data_schema=vol.Schema(schema),
                 errors={"base": "cannot_connect"},
             )
-        # Parse device info for display (not currently shown, but could be used)
+
         settings = SettingsData.from_json(settings_json)
         device = settings.device
-        description = (
-            f"Geräte-Info:\n"
-            f"Gerät: {device.device}\n"
-            f"Seriennummer: {device.serial}\n"
-            f"CPU: {device.cpu}\n"
-            f"HW-Version: {device.hw_version}\n"
-            f"SW-Version: {device.sw_version}"
+
+        unique_id = device.serial or f"{host}:{port}"
+        await self.async_set_unique_id(unique_id)
+        self._abort_if_unique_id_configured()
+
+        # 🔥 clean stored data
+        clean_data = dict(user_input)
+        if not auth_required:
+            clean_data.pop("username", None)
+            clean_data.pop("password", None)
+
+        return self.async_create_entry(
+            title=device_name,
+            data=clean_data,
         )
-        # Create the config entry
-        return self.async_create_entry(title=device_name, data=user_input)
+
 
 class WLANThermoOptionsFlow(config_entries.OptionsFlow):
     """
@@ -168,132 +178,65 @@ class WLANThermoOptionsFlow(config_entries.OptionsFlow):
         Validates required fields and authentication if enabled.
         """
         errors = {}
-        show_auth_fields = False
+
         if user_input is not None:
-            if not user_input.get(CONF_HOST):
-                errors[CONF_HOST] = "required"
-            if not user_input.get(CONF_PORT):
-                errors[CONF_PORT] = "required"
-            if not user_input.get("scan_interval"):
-                errors["scan_interval"] = "required"
-            if user_input.get("auth_required", False):
-                show_auth_fields = True
+            auth_required = user_input.get("auth_required", False)
+
+            if auth_required:
                 if not user_input.get("username"):
                     errors["username"] = "required"
                 if not user_input.get("password"):
                     errors["password"] = "required"
-            if not errors:
-                return self.async_create_entry(title="Options", data=user_input)
 
-        # Define the schema for the options form
-        base_schema = {
-            vol.Required(CONF_HOST, default=self._config_entry.data.get(CONF_HOST, "")): str,
-            vol.Required(CONF_PORT, default=self._config_entry.data.get(CONF_PORT, 80)): int,
-            vol.Required("scan_interval", default=self._config_entry.options.get("scan_interval", 10)): int,
+            if not errors:
+                clean = dict(user_input)
+                if not auth_required:
+                    clean.pop("username", None)
+                    clean.pop("password", None)
+
+                return self.async_create_entry(
+                    title="Options",
+                    data=clean,
+                )
+
+        options = self._config_entry.options
+        data = self._config_entry.data
+
+        schema = {
+            vol.Required(
+                CONF_HOST,
+                default=options.get(CONF_HOST, data.get(CONF_HOST)),
+            ): str,
+            vol.Required(
+                CONF_PORT,
+                default=options.get(CONF_PORT, data.get(CONF_PORT, 80)),
+            ): int,
+            vol.Required(
+                CONF_PATH_PREFIX,
+                default=options.get(CONF_PATH_PREFIX, data.get(CONF_PATH_PREFIX, "/")),
+            ): str,
+            vol.Required(
+                "scan_interval",
+                default=options.get("scan_interval", 10),
+            ): int,
             vol.Required(
                 "show_inactive_unavailable",
-                default=self._config_entry.options.get("show_inactive_unavailable", True),
-                description={"translation_key": "show_inactive_unavailable"}
+                default=options.get("show_inactive_unavailable", True),
+                description={"translation_key": "show_inactive_unavailable"},
             ): BooleanSelector({}),
             vol.Required(
                 "auth_required",
-                default=self._config_entry.options.get("auth_required", False),
-                description={"translation_key": "auth_required"}
+                default=options.get("auth_required", False),
+                description={"translation_key": "auth_required"},
             ): BooleanSelector({}),
-            vol.Optional("username", default=self._config_entry.options.get("username", "")): str,
-            vol.Optional("password", default=self._config_entry.options.get("password", "")): str,
         }
 
-        data_schema = vol.Schema(base_schema)
-        # Only require username/password if auth_required is true
-        if user_input is not None and user_input.get("auth_required", False):
-            if not user_input.get("username"):
-                errors["username"] = "required"
-            if not user_input.get("password"):
-                errors["password"] = "required"
+        if (user_input and user_input.get("auth_required")) or options.get("auth_required"):
+            schema[vol.Required("username", default=options.get("username", ""))] = str
+            schema[vol.Required("password", default=options.get("password", ""))] = str
 
         return self.async_show_form(
             step_id="init",
-            data_schema=data_schema,
+            data_schema=vol.Schema(schema),
             errors=errors,
         )
-    async def async_step_user(self, user_input=None):
-        """
-        User step for options flow: allow user to update host, port, and path prefix.
-        """
-        errors = {}
-        if user_input is not None:
-            if not user_input.get(CONF_HOST):
-                errors[CONF_HOST] = "required"
-            if not user_input.get(CONF_PORT):
-                errors[CONF_PORT] = "required"
-            if not user_input.get(CONF_PATH_PREFIX):
-                errors[CONF_PATH_PREFIX] = "required"
-            if not errors:
-                self.context["user_input"] = user_input
-                return await self.async_step_device_info()
-
-        data_schema = vol.Schema({
-            vol.Required(CONF_HOST): str,
-            vol.Required(CONF_PORT, default=80): int,
-            vol.Required(CONF_PATH_PREFIX, default="/"): str,
-        })
-
-        return self.async_show_form(
-            step_id="user",
-            data_schema=data_schema,
-            errors=errors,
-            description_placeholders=None,
-        )
-
-    async def async_step_device_info(self, user_input=None):
-        """
-        Device info step for options flow: fetch device info and confirm before saving.
-        """
-        # Get user_input from context
-        user_input = self.context.get("user_input")
-        host = user_input[CONF_HOST]
-        port = user_input[CONF_PORT]
-        path_prefix = user_input[CONF_PATH_PREFIX]
-        # Fetch /settings from the device
-        async with aiohttp.ClientSession() as session:
-            api = WLANThermoApi(host, port, path_prefix)
-            api.set_session(session)
-            settings_json = await api.get_settings()
-        if not settings_json:
-            # Show form again with error if device is unreachable
-            return self.async_show_form(
-                step_id="user",
-                data_schema=vol.Schema({
-                    vol.Required(CONF_HOST, default=host): str,
-                    vol.Required(CONF_PORT, default=port): int,
-                    vol.Required(CONF_PATH_PREFIX, default=path_prefix): str,
-                }),
-                errors={"base": "cannot_connect"},
-            )
-        # Parse device info for display (not currently shown, but could be used)
-        settings = SettingsData.from_json(settings_json)
-        device = settings.device
-        # Show info to user before creating entry
-        description = (
-            f"Geräte-Info:\n"
-            f"Gerät: {device.device}\n"
-            f"Seriennummer: {device.serial}\n"
-            f"CPU: {device.cpu}\n"
-            f"HW-Version: {device.hw_version}\n"
-            f"SW-Version: {device.sw_version}"
-        )
-        if user_input is not None and user_input.get("confirm"):
-            return self.async_create_entry(title=host, data=user_input)
-        # Confirm step before saving
-        return self.async_show_form(
-            step_id="device_info",
-            data_schema=vol.Schema({vol.Required("confirm", default=True): bool}),
-        )
-
-    @staticmethod
-    def async_get_options_flow(config_entry):
-        """
-        Return the options flow handler for this config entry.
-        """
-        return WLANThermoOptionsFlow(config_entry)
