@@ -37,6 +37,7 @@ class WLANThermoApi:
             async with async_timeout.timeout(10):
                 async with session.get(url, allow_redirects=True) as resp:
                     if resp.status != 200:
+                        _LOGGER.error(f"WLANThermoApi: result {url}: {resp.status} <-1")
                         return None
 
                     try:

@@ -688,7 +688,7 @@ class WlanthermoCloudOnlineSensor(CoordinatorEntity, SensorEntity):
             return None
 
         value = getattr(system, "online", None)
-        _LOGGER.error(
+        _LOGGER.debug(
             "[WLANThermo] system.online=%s",
             value,
         )
