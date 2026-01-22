@@ -102,11 +102,13 @@
       "channel_color": { "name": "Channel {channel_number} Color" }
     },
     "select": {
-      "channel_alarm": { "name": "Channel {channel_number} Alarm Mode" },
-      "channel_typ": { "name": "Channel {channel_number} Probe Type" },
-      "pitmaster_typ": { "name": "Pitmaster {pitmaster_number} Mode" },
-      "pitmaster_pid": { "name": "Pitmaster {pitmaster_number} PID Profile" },
-      "pitmaster_channel": { "name": "Pitmaster {pitmaster_number} Channel" }
+      "channel_alarm": {"name": "Channel {channel_number} Alarm Mode",
+        "options": {"off": "Off","push": "Push","buzzer": "Buzzer","push_buzzer": "Push + Buzzer"}
+      },
+      "channel_typ": {"name": "Channel {channel_number} Probe Type"},
+      "pitmaster_typ": {"name": "Pitmaster {pitmaster_number} Mode"},
+      "pitmaster_pid": {"name": "Pitmaster {pitmaster_number} PID Profile"},
+      "pitmaster_channel": {"name": "Pitmaster {pitmaster_number} Channel"}
     },
     "text": {
       "channel_color": { "name": "Channel {channel_number} Color (Hex)" },

@@ -8,43 +8,20 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 
-CHANNEL_SELECT_FIELDS = [
-    # Defines which channel fields are exposed as select entities
-    {
-        "key": "typ",
-        "name": "Probe Type",
-        "icon": "mdi:thermometer",
-        # TODO: Populate options from device/settings
-        "options": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-    },
-    {
-        "key": "alarm",
-        "name": "Alarm Mode",
-        "icon": "mdi:alarm",
-        "options": [0, 1, 2, 3],
-    },
-]
+ALARM_OPTIONS = ["off", "push", "buzzer", "push_buzzer"]
 
-PITMASTER_MODES = ["off", "manual", "auto"]
 PITMASTER_SELECT_FIELDS = [
     {
         "key": "typ",
         "icon": "mdi:state-machine",
-        "options": PITMASTER_MODES,
+        "options": [],
     },
     {
         "key": "pid",
         "icon": "mdi:chart-bell-curve",
-        # wird dynamisch überschrieben
         "options": [],
     },
 ]
-PITMASTER_STATE_MAP = {
-    "off": "off",
-    "manual": "manual",
-    "auto": "auto",
-}
-PITMASTER_STATE_MAP_INV = PITMASTER_STATE_MAP  # 1:1 Mapping
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """
@@ -65,27 +42,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         return
 
     entities = []
-
-    import json
-    import os
-    import aiofiles
-
-    lang = hass.config.language if hasattr(hass.config, 'language') else 'en'
-    translations_path = os.path.join(os.path.dirname(__file__), 'translations', f'{lang}.json')
-    if not os.path.exists(translations_path):
-        translations_path = os.path.join(os.path.dirname(__file__), 'translations', 'en.json')
-
-    async with aiofiles.open(translations_path, encoding='utf-8') as f:
-        translations = json.loads(await f.read())
-
-    alarm_labels_dict = translations.get("alarm", {})
-    alarm_mode_map = {
-        0: alarm_labels_dict.get("off", "Off"),
-        1: alarm_labels_dict.get("push", "Push"),
-        2: alarm_labels_dict.get("buzzer", "Buzzer"),
-        3: alarm_labels_dict.get("push_buzzer", "Push + Buzzer"),
-    }
-    alarm_labels = [alarm_mode_map[i] for i in range(4)]
 
     settings = getattr(hass.data[DOMAIN][config_entry.entry_id]["api"], 'settings', None)
     sensor_types = []
@@ -116,10 +72,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     for channel in coordinator.data.channels:
         entities.append(WlanthermoChannelSelect(coordinator, channel, {
             "key": "alarm",
-            "name": "Alarm Mode",
             "icon": "mdi:alarm",
-            "options": alarm_labels,
-            "alarm_mode_map": alarm_mode_map,
+            "options": ALARM_OPTIONS,
         }, entry_data))
 
         if not getattr(channel, "fixed", False):
@@ -131,9 +85,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                 "sensor_type_map": sensor_type_map,
             }, entry_data))
 
-    # Prepare PID profile options for pitmasters
+    # Prepare PID profile and pitmaster type options for pitmasters
     pid_profiles = []
     pid_profile_names = []
+    pitmaster_type_options: list[str] = []
+
 
     if settings and hasattr(settings, 'pid'):
         pid_profiles = settings.pid
@@ -141,6 +97,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     if not pid_profile_names:
         pid_profile_names = ["Profile 0", "Profile 1", "Profile 2"]
+
+
+    if coordinator.data and hasattr(coordinator.data, "pitmaster_types"):
+        pitmaster_type_options = coordinator.data.pitmaster_types.options
+
+    if not pitmaster_type_options:
+        pitmaster_type_options = ["off"]
+
 
     # Add select entities for each pitmaster
     for pitmaster in coordinator.data.pitmasters:
@@ -166,12 +130,29 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         ))
 
         for field in PITMASTER_SELECT_FIELDS:
-            if field["key"] == "pid":
-                field = field.copy()
+            field = field.copy()
+
+            if field["key"] == "typ":
+                field["options"] = pitmaster_type_options
+
+
+                entities.append(
+                    WlanthermoPitmasterSelect(
+                        coordinator, pitmaster, field, entry_data
+                    )
+                )
+
+            elif field["key"] == "pid":
                 field["options"] = pid_profile_names
-                entities.append(WlanthermoPitmasterSelect(coordinator, pitmaster, field, entry_data, pid_profiles=pid_profiles))
-            else:
-                entities.append(WlanthermoPitmasterSelect(coordinator, pitmaster, field, entry_data))
+                entities.append(
+                    WlanthermoPitmasterSelect(
+                        coordinator,
+                        pitmaster,
+                        field,
+                        entry_data,
+                        pid_profiles=pid_profiles,
+                    )
+                )
 
     async_add_entities(entities)
 
@@ -229,18 +210,7 @@ class WlanthermoChannelSelect(CoordinatorEntity, SelectEntity):
 
         value = option
         if self._field["key"] == "alarm":
-            alarm_mode_map = self._field.get("alarm_mode_map", {})
-            for k, v in alarm_mode_map.items():
-                if v == option:
-                    value = k
-                    break
-        elif self._field["key"] == "typ":
-            sensor_type_map = self._field.get("sensor_type_map", {})
-            if option in sensor_type_map:
-                value = sensor_type_map[option]
-            else:
-                if option in self._attr_options:
-                    value = self._attr_options.index(option)
+            value = self._attr_options.index(option)
 
         channel_data = {
             "number": channel.number,
@@ -266,9 +236,9 @@ class WlanthermoChannelSelect(CoordinatorEntity, SelectEntity):
             return None
         if self._field["key"] == "alarm":
             alarm_value = getattr(channel, "alarm", None)
-            if self._attr_options and alarm_value is not None and 0 <= alarm_value < len(self._attr_options):
-                return self._attr_options[alarm_value]
-            return None
+            options = self._attr_options
+            if options and alarm_value is not None and 0 <= alarm_value < len(options):
+                return options[alarm_value]
 
         if self._field["key"] == "typ":
             typ_value = getattr(channel, "typ", None)
@@ -337,7 +307,7 @@ class WlanthermoPitmasterSelect(CoordinatorEntity, SelectEntity):
         if not pitmaster:
             return None
 
-        if self._field["key"] == "typ":
+        if self._field["key"] == "typ" and pitmaster.typ in self._attr_options:
             return pitmaster.typ
 
         if self._field["key"] == "pid":

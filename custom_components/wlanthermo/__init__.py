@@ -90,7 +90,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 		try:
 			raw_data = await api.get_data()
 			if not raw_data:
-				raise UpdateFailed("WLANThermo: /data returned no data")
+				_LOGGER.debug("WLANThermo: No /data received")
+				return coordinator.data
 
 			settings = None
 			try:

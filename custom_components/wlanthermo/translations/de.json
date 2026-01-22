@@ -102,7 +102,9 @@
       "channel_color": {"name": "Kanal {channel_number} Farbe"}
     },
     "select": {
-      "channel_alarm": {"name": "Kanal {channel_number} Alarmmodus"},
+      "channel_alarm": {"name": "Kanal {channel_number} Alarmmodus",
+        "options": {"off": "Aus","push": "Push","buzzer": "Summer","push_buzzer": "Push + Summer"}
+      },
       "channel_typ": {"name": "Kanal {channel_number} Sensortyp"},
       "pitmaster_typ": {"name": "Pitmaster {pitmaster_number} Modus"},
       "pitmaster_pid": {"name": "Pitmaster {pitmaster_number} PID-Profil"},

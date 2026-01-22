@@ -29,10 +29,16 @@ class WlanthermoData:
                 Pitmaster(copy.deepcopy(p))
                 for p in raw.get("pitmaster", {}).get("pm", [])
             ]
+            self.pitmaster_types = PitmasterTypes(
+                raw.get("pitmaster", {}).get("type", [])
+            )
+
+
             self.system = SystemInfo(copy.deepcopy(raw.get("system", {})))
         else:
             self.channels = []
             self.pitmasters = []
+            self.pitmaster_types = []
             self.system = SystemInfo({})
 
 
@@ -81,14 +87,23 @@ class Pitmaster:
         self.set_color: str = str(data.get("set_color", "#000000"))
         self.value_color: str = str(data.get("value_color", "#000000"))
 
-class PitmasterType:
+class PitmasterTypes:
     """
-    Represents available pitmaster types (e.g., off, fan, servo).
+    Represents available pitmaster modes from /data.
+    JSON: pitmaster.type = ["off", "manual", "auto"]
     """
-    def __init__(self, types: List[str]):
-        self.types = types
+    def __init__(self, data: list[str] | None):
+        self._types: list[str] = list(data or [])
+    @property
+    def options(self) -> list[str]:
+        return self._types
+    def __contains__(self, item: str) -> bool:
+        return item in self._types
+    def __iter__(self):
+        return iter(self._types)
+    def __bool__(self):
+        return bool(self._types)
 
-# --- /settings models ---
 class DeviceInfo:
     """
     Device information from /settings endpoint.
@@ -116,17 +131,27 @@ class SystemSettings:
         self.host: str = str(data.get("host", ""))
         self.language: str = str(data.get("language", ""))
         self.version: str = str(data.get("version", ""))
-        self.getupdate: str = str(data.get("getupdate", "false"))
+        self.getupdate: bool = str(data.get("getupdate", "false")).lower() == "true"
         self.hwversion: str = str(data.get("hwversion", ""))
 
 class SensorType:
     """
     Represents a sensor type (probe type) from /settings.
     """
-    def __init__(self, data: Dict[str, Any]):
-        self.type: int = int(data.get("type", 0))
-        self.name: str = str(data.get("name", ""))
-        self.fixed: bool = bool(data.get("fixed", False))
+    def __init__(self, data: Any):
+        if isinstance(data, str):
+            self.type: int | None = None
+            self.name: str = data
+            self.fixed: bool = False
+        elif isinstance(data, dict):
+            self.type = int(data.get("type", 0))
+            self.name = str(data.get("name", ""))
+            self.fixed = bool(data.get("fixed", False))
+        else:
+            self.type = None
+            self.name = ""
+            self.fixed = False
+
 
 class FeatureSet:
     """
@@ -141,6 +166,16 @@ class PIDConfig:
     PID controller configuration from /settings.
     Includes tuning parameters and actuator info.
     """
+    @staticmethod
+    def parse_bool(value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value != 0
+        if isinstance(value, str):
+            return value.lower() in ("1", "true", "yes", "on")
+        return False
+
     def __init__(self, data: Dict[str, Any]):
         self.name: str = str(data.get("name", ""))
         self.id: int = int(data.get("id", 0))
@@ -150,11 +185,11 @@ class PIDConfig:
         self.Kd: float = float(data.get("Kd", 0.0))
         self.DCmmin: int = int(data.get("DCmmin", 0))
         self.DCmmax: int = int(data.get("DCmmax", 0))
-        self.opl: bool = bool(data.get("opl", False))
+        self.opl: bool = self.parse_bool(data.get("opl"))
         self.SPmin: int = int(data.get("SPmin", 0))
         self.SPmax: int = int(data.get("SPmax", 0))
         self.link: int = int(data.get("link", 0))
-        self.tune: bool = bool(data.get("tune", False))
+        self.tune: bool = self.parse_bool(data.get("tune"))
         self.jp: int = int(data.get("jp", 0))
 
 class DisplayInfo:
