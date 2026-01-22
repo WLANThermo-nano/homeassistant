@@ -7,6 +7,8 @@ from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 ALARM_OPTIONS = ["off", "push", "buzzer", "push_buzzer"]
 
@@ -35,10 +37,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     # Device offline? → coordinator.data = None → Plattformen NICHT laden
     if coordinator.data is None:
-        import logging
-        logging.getLogger(__name__).debug(
-            "WLANThermo Select: coordinator.data is None → skipping platform setup"
-        )
         return
 
     entities = []
@@ -46,9 +44,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     settings = getattr(hass.data[DOMAIN][config_entry.entry_id]["api"], 'settings', None)
     sensor_types = []
     sensor_type_map = {}
-
-    import logging
-    _LOGGER = logging.getLogger(__name__)
 
     if settings and hasattr(settings, 'sensors'):
         try:
@@ -204,8 +199,7 @@ class WlanthermoChannelSelect(CoordinatorEntity, SelectEntity):
         api = self.coordinator.hass.data[DOMAIN][self.coordinator.config_entry.entry_id]["api"]
         channel = self._get_channel()
         if not channel:
-            import logging
-            logging.getLogger(__name__).error(f"[WLANThermo] ChannelSelect: Channel {self._channel_number} not found for select_option")
+            _LOGGER.error(f"[WLANThermo] ChannelSelect: Channel {self._channel_number} not found for select_option")
             return
 
         value = option
