@@ -4,7 +4,6 @@ Exposes min/max temperature and pitmaster values as Home Assistant number entiti
 """
 
 from homeassistant.components.number import NumberEntity
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 
@@ -59,28 +58,43 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     entry_id = config_entry.entry_id
     entry_data = hass.data[DOMAIN][entry_id]
     coordinator = entry_data["coordinator"]
-    if coordinator.data is None:
-        return
 
-    data = coordinator.data
-    channels = getattr(data, "channels", []) if data else []
-    pitmasters = getattr(data, "pitmasters", []) if data else []
+    entity_store = entry_data.setdefault("entities", {})
+    entity_store.setdefault("channel_numbers", set())
+    entity_store.setdefault("pitmaster_numbers", set())
 
-    entities = []
+    async def _async_discover_numbers():
+        if not coordinator.data:
+            return
 
-    for channel in channels:
-        for field in CHANNEL_NUMBER_FIELDS:
-            entities.append(
-                WlanthermoChannelNumber(coordinator, channel, field, entry_data)
-            )
+        new_entities = []
 
-    for pitmaster in pitmasters:
-        for field in PITMASTER_NUMBER_FIELDS:
-            entities.append(
-                WlanthermoPitmasterNumber(coordinator, pitmaster, field, entry_data)
-            )
+        for channel in getattr(coordinator.data, "channels", []):
+            ch_id = channel.number
 
-    async_add_entities(entities)
+            if ch_id not in entity_store["channel_numbers"]:
+                for field in CHANNEL_NUMBER_FIELDS:
+                    new_entities.append(
+                        WlanthermoChannelNumber(coordinator,channel,field,entry_data)
+                    )
+                entity_store["channel_numbers"].add(ch_id)
+
+        for pitmaster in getattr(coordinator.data, "pitmasters", []):
+            pm_id = pitmaster.id
+
+            if pm_id not in entity_store["pitmaster_numbers"]:
+                for field in PITMASTER_NUMBER_FIELDS:
+                    new_entities.append(
+                        WlanthermoPitmasterNumber(coordinator,pitmaster,field,entry_data)
+                    )
+                entity_store["pitmaster_numbers"].add(pm_id)
+
+        if new_entities:
+            async_add_entities(new_entities)
+
+    await _async_discover_numbers()
+    coordinator.async_add_listener(_async_discover_numbers)
+
 
 class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
     """

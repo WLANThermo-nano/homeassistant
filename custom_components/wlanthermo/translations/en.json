@@ -13,7 +13,9 @@
           "show_inactive_unavailable": "Show inactive sensors as unavailable",
           "auth_required": "Authentication required",
           "username": "Username",
-          "password": "Password"
+          "username_optional": "Username (only enter if authentication is required)",
+          "password": "Password",
+          "password_optional": "Password (only enter if authentication is required)"
         }
       }
     },
@@ -32,7 +34,9 @@
           "show_inactive_unavailable": "Show inactive sensors as unavailable",
           "auth_required": "Authentication required",
           "username": "Username",
+          "username_optional": "Username (only enter if authentication is required)",
           "password": "Password",
+          "password_optional": "Password (only enter if authentication is required)",
           "scan_interval": "Scan Interval (seconds)"
         }
       }

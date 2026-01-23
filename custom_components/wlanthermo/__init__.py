@@ -13,7 +13,6 @@ from .data import WlanthermoData, SettingsData
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from datetime import timedelta
 import logging
-import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +38,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 			entry.options.get("username", entry.data.get("username")),
 			entry.options.get("password", entry.data.get("password")),
 		)
+	api._consecutive_failures = 0
+	api._max_failures = 3   # ← das ist deine Grace-Period
 
 
 	device_name = entry.data.get("device_name", "WLANThermo")
@@ -96,9 +97,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 		"""
 		try:
 			raw_data = await api.get_data()
+			
 			if not raw_data:
-				_LOGGER.debug("WLANThermo: No /data received")
-				return coordinator.data
+				api._consecutive_failures += 1
+				_LOGGER.debug(
+					"WLANThermo: No /data (%s/%s)",
+					api._consecutive_failures,
+					api._max_failures,
+				)
+				if api._consecutive_failures < api._max_failures:
+					return coordinator.data
+				raise UpdateFailed("WLANThermo offline (no /data)")
+			api._consecutive_failures = 0
 
 			settings = None
 			try:
@@ -113,8 +123,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 				settings=settings,
 			)
 
+		except UpdateFailed:
+			raise
 		except Exception as exc:
-			raise UpdateFailed(f"WLANThermo offline: {exc}")
+			api._consecutive_failures += 1
+			if api._consecutive_failures >= api._max_failures:
+				raise UpdateFailed(f"WLANThermo offline: {exc}")
+			return coordinator.data
 
 	# Set up the coordinator to periodically fetch data
 	coordinator = DataUpdateCoordinator(
@@ -159,8 +174,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 	return True
 	
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):

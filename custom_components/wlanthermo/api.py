@@ -5,7 +5,6 @@ Handles data retrieval and configuration updates for channels and pitmasters.
 """
 
 import async_timeout
-from homeassistant.helpers.update_coordinator import UpdateFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from aiohttp import BasicAuth
 import logging
@@ -52,11 +51,11 @@ class WLANThermoApi:
                         data = await resp.json()
                         return data
                     except Exception as json_err:
-                        self._LOGGER.warning(f"WLANThermoApi: JSON decode error for {url}: {json_err} <-2")
+                        self._LOGGER.warning(f"WLANThermoApi: JSON decode error for {url}: {json_err}")
                         return None
 
         except Exception as err:
-            self._LOGGER.warning(f"WLANThermoApi: Error fetching {url}: {err} <-3")
+            self._LOGGER.debug(f"WLANThermoApi: Error fetching {url}: {err}")
             return None
 
 
@@ -93,7 +92,7 @@ class WLANThermoApi:
                     text = await resp.text()
                     return resp.status, text
         except Exception as err:
-            self._LOGGER.warning("%s failed: %s", endpoint, err)
+            self._LOGGER.debug("%s failed: %s", endpoint, err)
             return None, None
 
     async def async_set_channel(self, channel_data: dict, method: str = "POST") -> bool:

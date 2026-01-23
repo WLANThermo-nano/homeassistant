@@ -4,7 +4,6 @@ Exposes probe type, alarm mode, pitmaster state, PID profile, and channel as Hom
 """
 
 from homeassistant.components.select import SelectEntity
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 import logging
@@ -32,14 +31,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """
     entry_id = config_entry.entry_id
     entry_data = hass.data[DOMAIN][entry_id]
-
     coordinator = entry_data["coordinator"]
 
-    # Device offline? → coordinator.data = None → Plattformen NICHT laden
-    if coordinator.data is None:
-        return
-
-    entities = []
+    entity_store = entry_data.setdefault("entities", {})
+    entity_store.setdefault("channel_selects", set())
+    entity_store.setdefault("pitmaster_selects", set())
 
     settings = getattr(coordinator.api, 'settings', None)
     sensor_types = []
@@ -63,93 +59,107 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         sensor_types = ["Typ 0", "Typ 1", "Typ 2"]
         sensor_type_map = {name: i for i, name in enumerate(sensor_types)}
 
-    # Add select entities for each channel
-    for channel in coordinator.data.channels:
-        entities.append(WlanthermoChannelSelect(coordinator, channel, {
-            "key": "alarm",
-            "icon": "mdi:alarm",
-            "options": ALARM_OPTIONS,
-        }, entry_data))
-
-        if not getattr(channel, "fixed", False):
-            entities.append(WlanthermoChannelSelect(coordinator, channel, {
-                "key": "typ",
-                "name": "Probe Type",
-                "icon": "mdi:thermometer",
-                "options": sensor_types,
-                "sensor_type_map": sensor_type_map,
-            }, entry_data))
-
     # Prepare PID profile and pitmaster type options for pitmasters
     pid_profiles = []
     pid_profile_names = []
     pitmaster_type_options: list[str] = []
-
-
     if settings and hasattr(settings, 'pid'):
         pid_profiles = settings.pid
         pid_profile_names = [p.name for p in pid_profiles]
-
     if not pid_profile_names:
         pid_profile_names = ["Profile 0", "Profile 1", "Profile 2"]
-
-
     if coordinator.data and hasattr(coordinator.data, "pitmaster_types"):
         pitmaster_type_options = coordinator.data.pitmaster_types.options
-
     if not pitmaster_type_options:
         pitmaster_type_options = ["off"]
 
+    async def _async_discover_selects():
+        if not coordinator.data:
+            return
 
-    # Add select entities for each pitmaster
-    for pitmaster in coordinator.data.pitmasters:
-        channels = getattr(coordinator.data, 'channels', [])
-        filtered_channels = [ch for ch in channels if not getattr(ch, 'connected', False)]
-        channel_options = [ch.name for ch in filtered_channels]
-        channel_number_by_name = {ch.name: ch.number for ch in filtered_channels}
-        channel_name_map = {ch.number: ch.name for ch in filtered_channels}
+        new_entities = []
+        for channel in getattr(coordinator.data, "channels", []):
+            ch_id = channel.number
 
-        entities.append(WlanthermoPitmasterSelect(
-            coordinator,
-            pitmaster,
-            {
-                "key": "channel",
-                "name": "Channel",
-                "icon": "mdi:link-variant",
-                "options": channel_options,
-            },
-            entry_data,
-            channel_options=channel_options,
-            channel_number_by_name=channel_number_by_name,
-            channel_name_map=channel_name_map
-        ))
-
-        for field in PITMASTER_SELECT_FIELDS:
-            field = field.copy()
-
-            if field["key"] == "typ":
-                field["options"] = pitmaster_type_options
-
-
-                entities.append(
-                    WlanthermoPitmasterSelect(
-                        coordinator, pitmaster, field, entry_data
+            if ch_id not in entity_store["channel_selects"]:
+                new_entities.append(
+                    WlanthermoChannelSelect(
+                        coordinator,
+                        channel,
+                        {
+                            "key": "alarm",
+                            "icon": "mdi:alarm",
+                            "options": ALARM_OPTIONS,
+                        },
+                        entry_data,
                     )
                 )
 
-            elif field["key"] == "pid":
-                field["options"] = pid_profile_names
-                entities.append(
+                if not getattr(channel, "fixed", False):
+                    new_entities.append(
+                        WlanthermoChannelSelect(
+                            coordinator,
+                            channel,
+                            {
+                                "key": "typ",
+                                "name": "Probe Type",
+                                "icon": "mdi:thermometer",
+                                "options": sensor_types,
+                                "sensor_type_map": sensor_type_map,
+                            },
+                            entry_data,
+                        )
+                    )
+
+                entity_store["channel_selects"].add(ch_id)
+
+        for pitmaster in getattr(coordinator.data, "pitmasters", []):
+            pm_id = pitmaster.id
+
+            if pm_id not in entity_store["pitmaster_selects"]:
+                channels = getattr(coordinator.data, "channels", [])
+                filtered_channels = [ch for ch in channels if not getattr(ch, "connected", False)]
+                channel_options = [ch.name for ch in filtered_channels]
+                channel_number_by_name = {ch.name: ch.number for ch in filtered_channels}
+                channel_name_map = {ch.number: ch.name for ch in filtered_channels}
+
+                new_entities.append(
                     WlanthermoPitmasterSelect(
                         coordinator,
                         pitmaster,
-                        field,
+                        {
+                            "key": "channel",
+                            "name": "Channel",
+                            "icon": "mdi:link-variant",
+                            "options": channel_options,
+                        },
                         entry_data,
-                        pid_profiles=pid_profiles,
+                        channel_options=channel_options,
+                        channel_number_by_name=channel_number_by_name,
+                        channel_name_map=channel_name_map,
                     )
                 )
 
-    async_add_entities(entities)
+                for field in PITMASTER_SELECT_FIELDS:
+                    field = field.copy()
+
+                    if field["key"] == "typ":
+                        field["options"] = pitmaster_type_options
+                        new_entities.append(
+                            WlanthermoPitmasterSelect(coordinator, pitmaster, field, entry_data)
+                        )
+
+                    elif field["key"] == "pid":
+                        field["options"] = pid_profile_names
+                        new_entities.append(
+                            WlanthermoPitmasterSelect(coordinator,pitmaster,field,entry_data,pid_profiles=pid_profiles,)
+                        )
+                entity_store["pitmaster_selects"].add(pm_id)
+        if new_entities:
+            async_add_entities(new_entities)
+
+    await _async_discover_selects()
+    coordinator.async_add_listener(_async_discover_selects)
 
 class WlanthermoChannelSelect(CoordinatorEntity, SelectEntity):
     """

@@ -20,65 +20,29 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     coordinator = entry_data["coordinator"]
 
     entity_store = entry_data.setdefault("entities", {})
-    entity_store.setdefault("lights", set())
+    entity_store.setdefault("text_channels", set())
 
-    async def _async_discover_lights():
+    async def _async_discover_entities():
         if not coordinator.data:
             return
 
-    entities = []
-    for channel in coordinator.data.channels:
-        entities.append(
-            WlanthermoChannelColorText(coordinator, channel, entry_data)
-        )
-        entities.append(
-            WlanthermoChannelNameText(coordinator, channel, entry_data)
-        )
+        new_entities = []
 
-    async_add_entities(entities)
+        for channel in getattr(coordinator.data, "channels", []):
+            ch_id = channel.number
 
+            if ch_id not in entity_store["text_channels"]:
+                new_entities.append(
+                    WlanthermoChannelNameText(coordinator, channel, entry_data)
+                )
+                entity_store["text_channels"].add(ch_id)
 
-class WlanthermoChannelColorText(CoordinatorEntity, TextEntity):
-    """
-    Text entity for displaying the color of a channel as a hex string (read-only).
-    """
-    def __init__(self, coordinator, channel, entry_data):
-        super().__init__(coordinator)
+        if new_entities:
+            async_add_entities(new_entities)
 
-        self._channel_number = channel.number
-        self._attr_has_entity_name = True
-        self._attr_translation_key = "channel_color"
-        self._attr_translation_placeholders = {
-            "channel_number": str(channel.number)
-        }
-        self._attr_unique_id = (
-            f"{coordinator.config_entry.entry_id}_"
-            f"channel_{channel.number}_color"
-        )
-        self._attr_icon = "mdi:palette"
-        self._attr_pattern = HEX_PATTERN
-        self._attr_min_length = 7
-        self._attr_max_length = 7
-        self._attr_entity_category = EntityCategory.CONFIG
-        self._attr_read_only = True
-        self._attr_device_info = entry_data["device_info"]
+    coordinator.async_add_listener(_async_discover_entities)
+    await _async_discover_entities()
 
-    def _get_channel(self):
-        """
-        Helper to get the current channel object from the coordinator data.
-        """
-        for ch in getattr(self.coordinator.data, "channels", []):
-            if ch.number == self._channel_number:
-                return ch
-        return None
-
-    @property
-    def native_value(self):
-        """
-        Return the current color of the channel as a hex string.
-        """
-        channel = self._get_channel()
-        return getattr(channel, "color", "#000000") if channel else "#000000"
 
 class WlanthermoChannelNameText(CoordinatorEntity, TextEntity):
     """
