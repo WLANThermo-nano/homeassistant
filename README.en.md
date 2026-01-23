@@ -66,11 +66,11 @@ Other models and firmware versions may also work, but are not officially tested.
 
 For the included sample dashboard `wlanthermo_en.yaml`, the following frontend extensions are required (via **HACS → Frontend**):
 
-- Auto-Entities
-- Button Card
-- Mushroom
-- ApexCharts Card
-- Card Mod
+- [Auto-Entities](https://github.com/thomasloven/lovelace-auto-entities) (`auto-entities`)
+- [Button Card](https://github.com/custom-cards/button-card) (`button-card`)
+- [Mushroom](https://github.com/piitaya/lovelace-mushroom) (`Mushroom`)
+- [ApexCharts Card](https://github.com/RomRider/apexcharts-card) (`apexcharts-card`)
+- [Card Mod](https://github.com/thomasloven/lovelace-card-mod) (`card-mod`)
 
 **Important:**  
 Replace all occurrences of `wlanthermo` with your device name.
