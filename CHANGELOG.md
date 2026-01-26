@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.2] - 2026-01-23
+
+### Added
+- New sensor attributes and extended language options
+- Improved support for Mini/Nano V1(+)
+- Additional debug and logging options
+
+### Changed
+- Dashboard layout and entities optimized for English names
+- Improved error handling for API and authentication
+- Optimized configuration and options flow
+- Improved mapping and display of entities
+
+### Removed
+- Removed outdated or duplicate entity names and unnecessary debug outputs
+
 ## [0.2.1] - 2026-01-21
 
 ### Changed

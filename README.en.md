@@ -1,6 +1,6 @@
-# WLANThermo  – Home Assistant Custom Integration
+# WLANThermo – Home Assistant Integration
 
-![Version](https://img.shields.io/badge/version-0.2.1-informational)
+![Version](https://img.shields.io/badge/version-0.2.2-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025%2B-blue)
 [![Support](https://img.shields.io/badge/support-WLANThermo%20Forum-lightgrey)](https://wlanthermo.de/forums/)
@@ -23,12 +23,22 @@ There is **no official support** by the author or the WLANThermo team.
 
 ## Overview
 
-This integration connects Home Assistant to **WLANThermo devices**  
-(ESP32 / Nano / Mini / Link).
+This integration connects Home Assistant to **WLANThermo devices**.
 
 It reads sensor data, system status, and pitmaster information and exposes them as native Home Assistant entities.
 
 The integration is **fully UI-based**, no YAML required.
+
+### Compatibility
+
+This integration has been successfully tested with:
+
+- WLANThermo Nano V1+, V3
+- WLANThermo Mini V2 ESP32, V3
+- WLANThermo Link V1
+- Home Assistant 2026.1.0 and newer
+
+Other models and firmware versions may also work, but are not officially tested.
 
 ---
 
@@ -56,20 +66,22 @@ The integration is **fully UI-based**, no YAML required.
 
 For the included sample dashboard `wlanthermo_en.yaml`, the following frontend extensions are required (via **HACS → Frontend**):
 
-- Auto-Entities
-- Button Card
-- Mushroom
-- ApexCharts Card
-- Card Mod
+- [Auto-Entities](https://github.com/thomasloven/lovelace-auto-entities) (`auto-entities`)
+- [Button Card](https://github.com/custom-cards/button-card) (`button-card`)
+- [Mushroom](https://github.com/piitaya/lovelace-mushroom) (`Mushroom`)
+- [ApexCharts Card](https://github.com/RomRider/apexcharts-card) (`apexcharts-card`)
+- [Card Mod](https://github.com/thomasloven/lovelace-card-mod) (`card-mod`)
+- [Browser Mod](https://github.com/thomasloven/hass-browser_mod) (`browser-mod`)
 
 **Important:**  
 Replace all occurrences of `wlanthermo` with your device name.
-All entity names are in English. For German, use the German dashboard file.
+All entity names are in German by default. For English, use the English dashboard file and entity names.
 
 Example:
 ```yaml
 device_name: wlanthermo → nano_v3
-sensor.wlanthermo_channel_*_temperature → sensor.nano_v3_channel_*_temperature
+sensor.wlanthermo_kanal_*_temperature → sensor.nano_v3_kanal_*_temperature
+sensor.wlanthermo_kanal_*_temperature → sensor.nano_v3_channel_*_temperature
 ```
 
 ## Installation via HACS (recommended)

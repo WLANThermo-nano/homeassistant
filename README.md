@@ -1,6 +1,6 @@
 # WLANThermo – Home Assistant Integration
 
-![Version](https://img.shields.io/badge/version-0.2.1-informational)
+![Version](https://img.shields.io/badge/version-0.2.2-informational)
 ![Lizenz](https://img.shields.io/badge/license-MIT-green)
 ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025%2B-blue)
 [![Support](https://img.shields.io/badge/support-WLANThermo%20Forum-lightgrey)](https://wlanthermo.de/forums/)
@@ -24,11 +24,21 @@ Es besteht **kein offizieller Support** durch den Autor oder das WLANThermo-Team
 ## Übersicht
 
 Diese Integration verbindet Home Assistant mit **WLANThermo Geräten**  
-(ESP32 / Nano / Mini / Link).
 
 Sie liest Sensordaten, Systemstatus und Pitmaster-Informationen aus und stellt diese als native Home-Assistant-Entitäten bereit.
 
 Die Integration ist **vollständig UI-basiert**, YAML ist nicht erforderlich.
+
+### Kompatibilität
+
+Diese Integration wurde erfolgreich getestet mit:
+
+- WLANThermo Nano V1+, V3
+- WLANThermo Mini V2 ESP32, V3
+- WLANThermo Link V1
+- Home Assistant 2026.1.0 und neuer
+
+Andere Modelle und Firmware-Versionen könnten ebenfalls funktionieren, sind aber nicht getestet.
 
 ---
 
@@ -56,11 +66,12 @@ Die Integration ist **vollständig UI-basiert**, YAML ist nicht erforderlich.
 
 Für das mitgelieferte Beispiel-Dashboard `wlanthermo.yaml` werden folgende Frontend-Erweiterungen benötigt (über **HACS → Frontend**):
 
-- Auto-Entities
-- Button Card
-- Mushroom
-- ApexCharts Card
-- Card Mod
+- [Auto-Entities](https://github.com/thomasloven/lovelace-auto-entities) (`auto-entities`)
+- [Button Card](https://github.com/custom-cards/button-card) (`button-card`)
+- [Mushroom](https://github.com/piitaya/lovelace-mushroom) (`Mushroom`)
+- [ApexCharts Card](https://github.com/RomRider/apexcharts-card) (`apexcharts-card`)
+- [Card Mod](https://github.com/thomasloven/lovelace-card-mod) (`card-mod`)
+- [Browser Mod](https://github.com/thomasloven/hass-browser_mod) (`browser-mod`)
 
 **Wichtig:**  
 Alle Vorkommen von `wlanthermo` müssen auf deinen Gerätenamen angepasst werden.
