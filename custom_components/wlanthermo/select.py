@@ -3,6 +3,7 @@ Select platform for WLANThermo adjustable values.
 Exposes probe type, alarm mode, pitmaster state, PID profile, and channel as Home Assistant select entities.
 """
 
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
@@ -36,6 +37,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     entity_store = entry_data.setdefault("entities", {})
     entity_store.setdefault("channel_selects", set())
     entity_store.setdefault("pitmaster_selects", set())
+    entity_store.setdefault("pidprofile_selects", set())
 
     settings = getattr(coordinator.api, 'settings', None)
     sensor_types = []
@@ -78,6 +80,39 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             return
 
         new_entities = []
+        # ---------- PID PROFILE SELECTS ----------
+        settings = coordinator.api.settings
+        aktor_options = getattr(settings, "aktor", [])
+
+        if not aktor_options:
+            _LOGGER.warning("WLANThermo: No aktor options found")
+        else:
+            aktor_map = {name: idx for idx, name in enumerate(aktor_options)}
+            aktor_reverse = {idx: name for idx, name in enumerate(aktor_options)}
+
+            for pid in getattr(settings, "pid", []):
+                pid_id = pid.id
+
+                store = entity_store.setdefault("pidprofile_selects", set())
+                if pid_id in store:
+                    continue
+
+                new_entities.append(
+                    WlanthermoPidProfileSelect(
+                        coordinator,
+                        entry_data,
+                        pid,
+                        key="aktor",
+                        icon="mdi:engine",
+                        options=aktor_options,
+                        value_map=aktor_map,
+                        reverse_map=aktor_reverse,
+                    )
+                )
+                entity_store["pidprofile_selects"].add(pid_id)
+
+                store.add(pid_id)
+
         for channel in getattr(coordinator.data, "channels", []):
             ch_id = channel.number
 
@@ -362,3 +397,65 @@ class WlanthermoPitmasterSelect(CoordinatorEntity, SelectEntity):
         await self.coordinator.api.async_set_pitmaster(data)
         await self.coordinator.async_request_refresh()
 
+class WlanthermoPidProfileSelect(CoordinatorEntity, SelectEntity):
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+
+
+    def __init__(
+        self,
+        coordinator,
+        entry_data,
+        pid_profile,
+        *,
+        key: str,
+        icon: str,
+        options: list[str],
+        value_map: dict,
+        reverse_map: dict,
+    ):
+        super().__init__(coordinator)
+
+        self._profile_id = pid_profile.id
+        self._key = key
+        self._value_map = value_map
+        self._reverse_map = reverse_map
+
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_pidprofile_{pid_profile.id}_{key}"
+        )
+        self._attr_icon = icon
+        self._attr_options = options
+        self._attr_device_info = entry_data["device_info"]
+        self._attr_translation_key = f"pidprofile_{key}"
+        self._attr_translation_placeholders = {
+            "profile_id": str(pid_profile.id),
+        }
+
+    @property
+    def current_option(self):
+        for p in getattr(self.coordinator.api.settings, "pid", []):
+            if p.id == self._profile_id:
+                return self._reverse_map.get(getattr(p, self._key), None)
+        return None
+
+    @property
+    def available(self):
+        return any(
+            p.id == self._profile_id
+            for p in getattr(self.coordinator.api.settings, "pid", [])
+        )
+
+    async def async_select_option(self, option: str):
+        value = self._value_map[option]
+        
+        for p in getattr(self.coordinator.api.settings, "pid", []):
+            if p.id == self._profile_id:
+                payload = {
+                    "id": p.id,
+                    self._key: value,
+                }
+                await self.coordinator.api.async_set_pid_profile([payload],method="PATCH")
+                await self.coordinator.async_request_refresh()
+                return
+            

@@ -1,3 +1,4 @@
+
 """
 Text platform for WLANThermo.
 Provides Home Assistant text entities for adjustable channel name and color.
@@ -8,6 +9,8 @@ from homeassistant.components.text import TextEntity
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 HEX_PATTERN = r"^#[0-9A-Fa-f]{6}$"
 
@@ -21,6 +24,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     entity_store = entry_data.setdefault("entities", {})
     entity_store.setdefault("text_channels", set())
+    entity_store.setdefault("text_pidprofiles", set())
 
     async def _async_discover_entities():
         if not coordinator.data:
@@ -36,6 +40,18 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                     WlanthermoChannelNameText(coordinator, channel, entry_data)
                 )
                 entity_store["text_channels"].add(ch_id)
+
+        for profile in getattr(coordinator.api.settings, "pid", []):
+            pid_id = profile.id
+            if pid_id not in entity_store["text_pidprofiles"]:
+                new_entities.append(
+                    WlanthermoPidProfileNameText(
+                        coordinator,
+                        entry_data,
+                        profile_id=pid_id,
+                    )
+                )
+                entity_store["text_pidprofiles"].add(pid_id)
 
         if new_entities:
             async_add_entities(new_entities)
@@ -104,3 +120,46 @@ class WlanthermoChannelNameText(CoordinatorEntity, TextEntity):
 
         await self.coordinator.api.async_set_channel(channel_data)
         await self.coordinator.async_request_refresh()
+
+
+class WlanthermoPidProfileNameText(CoordinatorEntity, TextEntity):
+    """
+    Text entity for PID profile name.
+    """
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:form-textbox"
+    _attr_native_min = 0
+    _attr_native_max = 14   # API: max 14 chars
+    _attr_pattern = r".*"   # UTF-8 allowed
+
+    def __init__(self, coordinator, entry_data, *, profile_id: int):
+        super().__init__(coordinator)
+
+        self._profile_id = profile_id
+
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_pid_{profile_id}_name"
+        )
+        self._attr_device_info = entry_data["device_info"]
+        self._attr_translation_key = "pidprofile_name"
+        self._attr_translation_placeholders = {
+            "profile_id": str(profile_id)
+        }
+
+    @property
+    def native_value(self) -> str | None:
+        for profile in getattr(self.coordinator.api.settings, "pid", []):
+            if profile.id == self._profile_id:
+                return profile.name
+        return None
+
+    async def async_set_value(self, value: str):
+        payload = {
+            "id": self._profile_id,
+            "name": value,
+        }
+
+        success = await self.coordinator.api.async_set_pid_profile([payload],method="PATCH")
+
+        if success:
+            await self.coordinator.async_request_refresh()

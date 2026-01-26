@@ -5,6 +5,7 @@ Exposes min/max temperature and pitmaster values as Home Assistant number entiti
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.entity import EntityCategory
 from .const import DOMAIN
 
 CHANNEL_NUMBER_FIELDS = [
@@ -50,10 +51,18 @@ PITMASTER_NUMBER_FIELDS = [
         "unit": "°C",
     },
 ]
+ICON_MAP = {
+    "jp": "mdi:rocket-launch",
+    "DCmmin": "mdi:cosine-wave",
+    "DCmmax": "mdi:sine-wave",
+    "SPmin": "mdi:axis-arrow",
+    "SPmax": "mdi:axis-arrow",
+    "link": "mdi:link-variant",
+}
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """
-    Set up number entities for each channel and pitmaster in the config entry.
+    Set up number entities for channels, pitmasters and PID profiles.
     """
     entry_id = config_entry.entry_id
     entry_data = hass.data[DOMAIN][entry_id]
@@ -62,32 +71,66 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     entity_store = entry_data.setdefault("entities", {})
     entity_store.setdefault("channel_numbers", set())
     entity_store.setdefault("pitmaster_numbers", set())
+    entity_store.setdefault("pidprofile_numbers", set())
+
+    # field, min, max, allowed aktor ids
+    PID_NUMBER_FIELDS = [
+        ("jp", 0, 100, None),
+        ("DCmmin", 0, 100, (0, 1, 3)),   # SSR, FAN, DAMPER
+        ("DCmmax", 0, 100, (0, 1, 3)),
+        ("SPmin", 0, 3000, (2, 3)),      # SERVO, DAMPER
+        ("SPmax", 0, 3000, (2, 3)),
+        ("link", 0, 1, (3,)),            # DAMPER
+    ]
 
     async def _async_discover_numbers():
         if not coordinator.data:
             return
 
-        new_entities = []
+        new_entities: list[NumberEntity] = []
 
+        # ---------- Channels ----------
         for channel in getattr(coordinator.data, "channels", []):
             ch_id = channel.number
+            if channel.number not in entity_store["channel_numbers"]:
 
-            if ch_id not in entity_store["channel_numbers"]:
                 for field in CHANNEL_NUMBER_FIELDS:
                     new_entities.append(
                         WlanthermoChannelNumber(coordinator,channel,field,entry_data)
                     )
-                entity_store["channel_numbers"].add(ch_id)
 
+                entity_store["channel_numbers"].add(channel.number)
+
+        # ---------- Pitmasters ----------
         for pitmaster in getattr(coordinator.data, "pitmasters", []):
-            pm_id = pitmaster.id
+            if pitmaster.id not in entity_store["pitmaster_numbers"]:
 
-            if pm_id not in entity_store["pitmaster_numbers"]:
                 for field in PITMASTER_NUMBER_FIELDS:
                     new_entities.append(
                         WlanthermoPitmasterNumber(coordinator,pitmaster,field,entry_data)
+                )
+
+            entity_store["pitmaster_numbers"].add(pitmaster.id)
+
+        # ---------- PID Profiles ----------
+        for profile in getattr(coordinator.api.settings, "pid", []):
+            for field, min_v, max_v, _aktor_filter in PID_NUMBER_FIELDS:
+                key = (profile.id, field)
+                if key in entity_store["pidprofile_numbers"]:
+                    continue
+
+                new_entities.append(
+                    WlanthermoPidProfileNumber(
+                        coordinator,
+                        entry_data,
+                        profile_id=profile.id,
+                        field=field,
+                        min_value=min_v,
+                        max_value=max_v,
                     )
-                entity_store["pitmaster_numbers"].add(pm_id)
+                )
+                entity_store["pidprofile_numbers"].add(key)
+
 
         if new_entities:
             async_add_entities(new_entities)
@@ -236,3 +279,75 @@ class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
     @property
     def available(self):
         return self.coordinator.last_update_success
+    
+
+
+class WlanthermoPidProfileNumber(CoordinatorEntity, NumberEntity):
+    """
+    Number entity for editable PID profile fields.
+    """
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:tune-vertical"
+    
+
+    def __init__(
+        self,
+        coordinator,
+        entry_data,
+        *,
+        profile_id: int,
+        field: str,
+        min_value: int,
+        max_value: int,
+    ):
+        super().__init__(coordinator)
+
+        self._profile_id = profile_id
+        self._field = field
+
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_pid_{profile_id}_{field}"
+        )
+        self._attr_device_info = entry_data["device_info"]
+        self._attr_translation_key = f"pidprofile_{field}"
+        self._attr_translation_placeholders = {
+            "profile_id": str(self._profile_id),
+        }
+        self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_icon = ICON_MAP.get(field, "mdi:numeric")
+
+        self._attr_native_min_value = min_value
+        self._attr_native_max_value = max_value
+        self._attr_native_step = 1
+
+
+    @property
+    def native_value(self):
+        for profile in getattr(self.coordinator.api.settings, "pid", []):
+            if profile.id == self._profile_id:
+                return getattr(profile, self._field, None)
+        return None
+
+    async def async_set_native_value(self, value):
+        payload = {
+            "id": self._profile_id,
+            self._field: value,
+        }
+
+        success = await self.coordinator.api.async_set_pid_profile([payload],method="PATCH")
+
+        if success:
+            await self.coordinator.async_request_refresh()
+
+    @property
+    def available(self) -> bool:
+        for p in getattr(self.coordinator.api.settings, "pid", []):
+            if p.id == self._profile_id:
+                if self._field in ("DCmmin", "DCmmax"):
+                    return p.supports_pwm
+                if self._field in ("SPmin", "SPmax"):
+                    return p.supports_servo
+                if self._field == "link":
+                    return p.supports_link
+                return True
+        return False

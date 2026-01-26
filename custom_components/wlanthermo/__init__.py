@@ -154,7 +154,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 	}
 	hass.data[DOMAIN][entry.entry_id] = entry_data
 	
-	platforms = ["sensor", "number", "select", "text", "light"]
+	platforms = ["sensor", "number", "select", "text", "light","switch"]
 
 	# If device is offline at setup → do NOT load platforms
 	if not coordinator.last_update_success:

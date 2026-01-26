@@ -6,6 +6,10 @@ Defines Python classes for parsing and representing /data and /settings API resp
 from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
+AKTOR_SSR = 0
+AKTOR_FAN = 1
+AKTOR_SERVO = 2
+AKTOR_DAMPER = 3
 class WlanthermoData:
     """
     Container for parsed /data endpoint response.
@@ -38,7 +42,7 @@ class WlanthermoData:
         else:
             self.channels = []
             self.pitmasters = []
-            self.pitmaster_types = []
+            self.pitmaster_types = PitmasterTypes([])
             self.system = SystemInfo({})
 
 
@@ -166,6 +170,22 @@ class PIDConfig:
     PID controller configuration from /settings.
     Includes tuning parameters and actuator info.
     """
+    @property
+    def is_servo(self) -> bool:
+        return self.aktor in (AKTOR_SERVO, AKTOR_DAMPER)
+    @property
+    def is_pwm(self) -> bool:
+        return self.aktor in (AKTOR_SSR, AKTOR_FAN, AKTOR_DAMPER)
+    @property
+    def supports_pwm(self):
+        return self.aktor in (AKTOR_SSR, AKTOR_FAN, AKTOR_DAMPER)
+    @property
+    def supports_servo(self):
+        return self.aktor in (AKTOR_SERVO, AKTOR_DAMPER)
+    @property
+    def supports_link(self):
+        return self.aktor == AKTOR_DAMPER
+
     @staticmethod
     def parse_bool(value: Any) -> bool:
         if isinstance(value, bool):
@@ -185,12 +205,24 @@ class PIDConfig:
         self.Kd: float = float(data.get("Kd", 0.0))
         self.DCmmin: int = int(data.get("DCmmin", 0))
         self.DCmmax: int = int(data.get("DCmmax", 0))
-        self.opl: bool = self.parse_bool(data.get("opl"))
+        self.opl: bool = self.parse_bool(data.get("opl", False))
         self.SPmin: int = int(data.get("SPmin", 0))
         self.SPmax: int = int(data.get("SPmax", 0))
         self.link: int = int(data.get("link", 0))
-        self.tune: bool = self.parse_bool(data.get("tune"))
+        self.tune: bool = self.parse_bool(data.get("tune", False))
         self.jp: int = int(data.get("jp", 0))
+
+    def to_patch(self, **changes) -> dict:
+        payload = {"id": self.id}
+        payload.update(changes)
+        return payload
+
+    def aktor_name(self, aktor_map: list[str]) -> str:
+        try:
+            return aktor_map[self.aktor]
+        except IndexError:
+            return "UNKNOWN"
+
 
 class DisplayInfo:
     """

@@ -85,7 +85,13 @@
       "channel_min": {"name": "Kanal {channel_number} Minimum"},
       "channel_max": {"name": "Kanal {channel_number} Maximum"},
       "pitmaster_value": {"name": "Pitmaster {pitmaster_number} Leistung"},
-      "pitmaster_set": {"name": "Pitmaster {pitmaster_number} Solltemperatur"}
+      "pitmaster_set": {"name": "Pitmaster {pitmaster_number} Solltemperatur"},
+      "pidprofile_jp": {"name": "PID-Profil {profile_id} Startleistung (JP)"},
+      "pidprofile_DCmmin": {"name": "PID-Profil {profile_id} PWM Minimum"},
+      "pidprofile_DCmmax": {"name": "PID-Profil {profile_id} PWM Maximum"},
+      "pidprofile_SPmin": {"name": "PID-Profil {profile_id} Servo Minimum"},
+      "pidprofile_SPmax": {"name": "PID-Profil {profile_id} Servo Maximum"},
+      "pidprofile_link": {"name": "PID-Profil {profile_id} Aktor-Verknüpfung"}
     },
     "light":{
       "channel_color": {"name": "Kanal {channel_number} Farbe"}
@@ -97,10 +103,20 @@
       "channel_typ": {"name": "Kanal {channel_number} Sensortyp"},
       "pitmaster_typ": {"name": "Pitmaster {pitmaster_number} Modus"},
       "pitmaster_pid": {"name": "Pitmaster {pitmaster_number} PID-Profil"},
-      "pitmaster_channel": {"name": "Pitmaster {pitmaster_number} Kanal"}
+      "pitmaster_channel": {"name": "Pitmaster {pitmaster_number} Kanal"},
+      "pidprofile_aktor": {"name": "PID-Profil {profile_id} Aktor",
+              "options": {"SSR": "SSR","FAN": "Lüfter","SERVO": "Servo","DAMPER": "Klappe"}
+          }
     },
     "text": {
-      "channel_name": {"name": "Kanal {channel_number} Name"}
+      "channel_name": {"name": "Kanal {channel_number} Name"},
+      "pidprofile_name": {"name": "PID-Profil {profile_id} Name"}
+    },
+    "switch": {
+      "pidprofile_opl": {
+        "name": "PID-Profil {profile_id} Deckelerkennung"
+      }
     }
+
   }
 }
