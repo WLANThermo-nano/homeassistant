@@ -271,6 +271,89 @@ button_card_templates:
                   const dev = variables.device_name;
                   return `select.${dev}_pitmaster_${id}_modus`;
                 ]]]
+  wlt_pitprofil_button:
+    show_icon: false
+    show_name: true
+    show_state: false
+    icon: mdi:thermometer
+    variables:
+      device_name: wlanthermo
+    name: |
+      [[[
+        const dev = variables.device_name;
+        const id = entity.entity_id.match(/pid_profil_(\d+)_/)[1];
+        return states[`text.${dev}_pid_profil_${id}_name`]?.state;
+      ]]]
+    styles:
+      card:
+        - padding: 4px
+        - height: 70px
+        - border-radius: 12px
+      name:
+        - font-size: 14px
+        - font-weight: bold
+        - align-self: center
+      icon:
+        - width: 22px
+        - height: 22px
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: |
+            [[[
+              const id = entity.entity_id.match(/pid_profil_(\d+)_/)[1];
+              return "Pit Profil " + id;
+            ]]]
+          content:
+            type: entities
+            entities:
+              - |
+                [[[
+                  const id = entity.entity_id.match(/pid_profil_(\d+)_/)[1];
+                  return `text.${variables.device_name}_pid_profil_${id}_name`;
+                ]]]
+              - |
+                [[[
+                  const id = entity.entity_id.match(/pid_profil_(\d+)_/)[1];
+                  return `select.${variables.device_name}_pid_profil_${id}_aktor`;
+                ]]]
+              - |
+                [[[
+                  const id = entity.entity_id.match(/pid_profil_(\d+)_/)[1];
+                  return `switch.${variables.device_name}_pid_profil_${id}_deckelerkennung`;
+                ]]]
+              - |
+                [[[
+                  const id = entity.entity_id.match(/pid_profil_(\d+)_/)[1];
+                  return `number.${variables.device_name}_pid_profil_${id}_startleistung_jp`;
+                ]]]
+              - |
+                [[[
+                  const id = entity.entity_id.match(/pid_profil_(\d+)_/)[1];
+                  return `number.${variables.device_name}_pid_profil_${id}_pwm_minimum`;
+                ]]]
+              - |
+                [[[
+                  const id = entity.entity_id.match(/pid_profil_(\d+)_/)[1];
+                  return `number.${variables.device_name}_pid_profil_${id}_pwm_maximum`;
+                ]]]
+              - |
+                [[[
+                  const id = entity.entity_id.match(/pid_profil_(\d+)_/)[1];
+                  return `number.${variables.device_name}_pid_profil_${id}_servo_minimum`;
+                ]]]
+              - |
+                [[[
+                  const id = entity.entity_id.match(/pid_profil_(\d+)_/)[1];
+                  return `number.${variables.device_name}_pid_profil_${id}_servo_maximum`;
+                ]]]
+              - |
+                [[[
+                  const id = entity.entity_id.match(/pid_profil_(\d+)_/)[1];
+                  return `switch.${variables.device_name}_pid_profil_${id}_aktor_verknupfung`;
+                ]]]
 views:
   - title: WLANThermo
     path: wlanthermo
@@ -473,6 +556,20 @@ views:
                               border-radius: 12px;
                               padding: 8px;
                             }
+                  - type: custom:auto-entities
+                    card:
+                      type: grid
+                      columns: 4
+                      square: false
+                    filter:
+                      include:
+                        - entity_id: text.wlanthermo_pid_profil_*_name
+                          options:
+                            type: custom:button-card
+                            template: wlt_pitprofil_button
+                    sort:
+                      method: entity_id
+                    card_param: cards
           - type: custom:auto-entities
             card:
               type: custom:apexcharts-card
