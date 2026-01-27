@@ -85,7 +85,12 @@
       "channel_min": {"name": "Channel {channel_number} Minimum"},
       "channel_max": {"name": "Channel {channel_number} Maximum"},
       "pitmaster_value": {"name": "Pitmaster {pitmaster_number} Power"},
-      "pitmaster_set": {"name": "Pitmaster {pitmaster_number} Target Temperature" }
+      "pitmaster_set": {"name": "Pitmaster {pitmaster_number} Target Temperature" },
+      "pidprofile_jp": {"name": "PID Profile {profile_id} Jump Power (JP)"},
+      "pidprofile_DCmmin": {"name": "PID Profile {profile_id} PWM Minimum"},
+      "pidprofile_DCmmax": {"name": "PID Profile {profile_id} PWM Maximum"},
+      "pidprofile_SPmin": {"name": "PID Profile {profile_id} Servo Minimum"},
+      "pidprofile_SPmax": {"name": "PID Profile {profile_id} Servo Maximum"}
     },
     "light": {
       "channel_color": {"name": "Channel {channel_number} Color" }
@@ -97,10 +102,18 @@
       "channel_typ": {"name": "Channel {channel_number} Probe Type"},
       "pitmaster_typ": {"name": "Pitmaster {pitmaster_number} Mode"},
       "pitmaster_pid": {"name": "Pitmaster {pitmaster_number} PID Profile"},
-      "pitmaster_channel": {"name": "Pitmaster {pitmaster_number} Channel"}
+      "pitmaster_channel": {"name": "Pitmaster {pitmaster_number} Channel"},
+      "pidprofile_aktor": {"name": "PID Profile {profile_id} Actuator",
+                 "options": {"SSR": "SSR","FAN": "Fan","SERVO": "Servo","DAMPER": "Damper"}
+              }
     },
     "text": {
-      "channel_name": {"name": "Channel {channel_number} Name"}
+      "channel_name": {"name": "Channel {channel_number} Name"},
+      "pidprofile_name": {"name": "PID Profile {profile_id} Name"}
+    },
+    "switch": {
+      "pidprofile_opl": {"name": "PID Profile {profile_id} Open Lid Detection"},
+      "pidprofile_link": {"name": "PID Profile {profile_id} Actuator Link"}
     }
   }
 }
