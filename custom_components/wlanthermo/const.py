@@ -3,6 +3,15 @@
 Constants for the WLANThermo Home Assistant integration.
 Defines domain, config keys, and alarm mode mappings.
 """
+# supported platforms
+PLATFORMS = ["sensor", "number", "select", "text", "light","switch"]
+
+# Integration domain string
+DOMAIN = "wlanthermo"
+# Config entry key for API path prefix
+CONF_PATH_PREFIX = "path_prefix"
+
+# Model List
 MODELS = [
 	("select", "Select"),
 	("link_v1", "Link V1"),
@@ -10,10 +19,6 @@ MODELS = [
 	("mini_v2", "Mini-V2"),
 	("mini_v3", "Mini-V3"),
 ]
-# Integration domain string
-DOMAIN = "wlanthermo"
-# Config entry key for API path prefix
-CONF_PATH_PREFIX = "path_prefix"
 
 # Alarm mode constants (used for channel/pitmaster alarms)
 ALARM_OFF = 0           # No alarm

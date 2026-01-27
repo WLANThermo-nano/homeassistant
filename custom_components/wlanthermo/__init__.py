@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN
+from .const import DOMAIN, PLATFORMS
 from .api import WLANThermoApi
 from .data import WlanthermoData, SettingsData
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -15,7 +15,6 @@ from datetime import timedelta
 import logging
 
 _LOGGER = logging.getLogger(__name__)
-
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 	"""
@@ -154,18 +153,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 	}
 	hass.data[DOMAIN][entry.entry_id] = entry_data
 	
-	platforms = ["sensor", "number", "select", "text", "light","switch"]
-
 	# If device is offline at setup → do NOT load platforms
 	if not coordinator.last_update_success:
 
 		async def _async_start_platforms():
 			if coordinator.last_update_success:
-				await hass.config_entries.async_forward_entry_setups(entry, platforms)
+				await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
 		coordinator.async_add_listener(_async_start_platforms)
 	else:
-		await hass.config_entries.async_forward_entry_setups(entry, platforms)
+		await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
 	entry.async_on_unload(
 		entry.add_update_listener(async_reload_entry)
@@ -182,10 +179,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
 	Unload a WLANThermointegration entry and all associated platforms.
 	Cleans up hass.data and returns True if all platforms unloaded successfully.
 	"""
-	platforms = ["sensor", "number", "select", "text", "light"]
 
 	unload_ok = await hass.config_entries.async_unload_platforms(
-		entry, platforms
+		entry, PLATFORMS
 	)
 
 	hass.data[DOMAIN].pop(entry.entry_id, None)
