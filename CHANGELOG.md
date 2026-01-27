@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.3] - 2026-01-27
+
+### Added
+- Modularized entity platforms: PID profile entities are now split into text, number, and switch platforms for better maintainability.
+- Dynamic entity creation for all PID profile fields (name, aktor, opl, jp, DCmmin, DCmmax, SPmin, SPmax, link) using Home Assistant’s Text, Number, and Switch platforms.
+- Listeners and entity_store tracking for all platforms to support dynamic updates and robust entity management.
+
+### Changed
+- Improved code structure, comments, and separation of concerns for easier future development.
+- Enhanced data models and ensured all PIDConfig fields are used for entity creation.
+
+### Fixed
+- Various minor bugs and inconsistencies in entity registration and update logic.
+
 ## [0.2.2] - 2026-01-23
 
 ### Added

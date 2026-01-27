@@ -1,6 +1,6 @@
 # WLANThermo – Home Assistant Integration
 
-![Version](https://img.shields.io/badge/version-0.2.2-informational)
+![Version](https://img.shields.io/badge/version-0.2.3-informational)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025%2B-blue)
 [![Support](https://img.shields.io/badge/support-WLANThermo%20Forum-lightgrey)](https://wlanthermo.de/forums/)
@@ -47,14 +47,14 @@ Other models and firmware versions may also work, but are not officially tested.
 - 🔍 Automatic discovery & setup via the HA UI
 - 🌡️ Dynamic temperature sensors for all channels (name & number)
 - 🎛️ Dynamic pitmaster sensors (power, temperature, mode, PID, channel)
-- ⏱️ **Time Left sensor** for each active channel
-- ☁️ **Cloud sensors**
+- ⏱️ Time Left sensor for each active channel
+- ☁️ Cloud sensors
 - 🔋 System diagnostics:
   - WiFi RSSI
   - Battery level
   - Charging state
-- 🎨 Channel colors as **light entities**
-- 🌍 Full **translation support (EN / DE)**
+- 🎨 Channel colors
+- 🌍 Full translation support (EN / DE)
 - ⚙️ Configurable scan interval
 - 🔌 Offline-tolerant startup (entities appear automatically)
 - 🔄 Options flow for advanced settings
@@ -64,7 +64,7 @@ Other models and firmware versions may also work, but are not officially tested.
 
 ## Dashboard (optional)
 
-For the included sample dashboard `wlanthermo_en.yaml`, the following frontend extensions are required (via **HACS → Frontend**):
+For the sample dashboard `wlanthermo_en.yaml` within the Repository, the following frontend extensions are required (via **HACS → Frontend**):
 
 - [Auto-Entities](https://github.com/thomasloven/lovelace-auto-entities) (`auto-entities`)
 - [Button Card](https://github.com/custom-cards/button-card) (`button-card`)
@@ -75,27 +75,26 @@ For the included sample dashboard `wlanthermo_en.yaml`, the following frontend e
 
 **Important:**  
 Replace all occurrences of `wlanthermo` with your device name.
-All entity names are in German by default. For English, use the English dashboard file and entity names.
+All entity names are in English by default. For German, use the `wlanthermo.yaml` dashboard file and entity names.
 
 Example:
 ```yaml
 device_name: wlanthermo → nano_v3
-sensor.wlanthermo_kanal_*_temperature → sensor.nano_v3_kanal_*_temperature
-sensor.wlanthermo_kanal_*_temperature → sensor.nano_v3_channel_*_temperature
+sensor.wlanthermo_channel_*_temperature → sensor.nano_v3_channel_*_temperature
+sensor.nano_v3_channel_*_temperature → sensor.wlanthermo_kanal_*_temperature
 ```
+
+---
 
 ## Installation via HACS (recommended)
 
 1. Open Home Assistant and go to  
-   **Settings → Devices & Services → HACS**
-2. Select **Integrations**
-3. Click the three dots (⋮) in the top right → **Custom Repository**
-4. Enter: `https://github.com/WLANThermo-nano/homeassistant` Type: **Integration**
-5. Search for **WLANThermo**
-6. Install the integration
-7. Restart Home Assistant
-
----
+   **Menu → HACS** (your_HA_URL/hacs/dashboard)
+2. Click the three dots (⋮) in the top right → **Custom Repository**
+3. Enter: `https://github.com/WLANThermo-nano/homeassistant` Type: **Integration**
+4. Search for **WLANThermo**
+5. Install the integration
+6. Restart Home Assistant
 
 ## Manual Installation
 
@@ -110,8 +109,11 @@ sensor.wlanthermo_kanal_*_temperature → sensor.nano_v3_channel_*_temperature
 1. Open Home Assistant
 2. **Settings → Devices & Services → Add Integration**
 3. Select **WLANThermo**
-4. Enter IP address / host, port, and optional path prefix
-5. Complete the setup
+4. Enter device name (should be unique)
+5. Enter IP address / host, port, and optional path prefix
+6. The option 'Show inactive sensors as unavailable' controls whether temperatures are shown as `999` or as **unavailable**
+7. If authentication is required, enable it and enter username/password
+8. Complete the setup
 
 ---
 
@@ -119,49 +121,62 @@ sensor.wlanthermo_kanal_*_temperature → sensor.nano_v3_channel_*_temperature
 
 Access options via:
 
-**Settings → Devices & Services → WLANThermo → Options**
+**Settings → Devices & Services → WLANThermo → Options (gear icon)**
 
-### Available Options
-
-- **IP address / host**
-- Can be updated if the internal IP changes in your router
-
-- **Scan interval**
-- Defines how often data is fetched from the WLANThermo
-- Default: **10 seconds**
-
-- **Inactive sensor display**
-- Show `999` or as **unavailable**
-
-- **Authentication**
-- Username / password if enabled in the web interface
+- **IP address / port / prefix**  
+  Can be updated if the IP changes in your router or settings change
+- **Scan interval**  
+  Defines how often data is fetched from the WLANThermo  
+  Default: **10 seconds**
+- **Show inactive sensors as unavailable**  
+  Controls whether temperatures are shown as `999` or as **unavailable**
+- **Authentication**  
+  Username / password if enabled in the web interface
 
 ---
 
-## Entities (Selection)
+## Entities in HA
 
 ### Channels
-- Temperature
-- Alarm mode (Select)
-- Sensor type (Select)
-- Min / Max
-- **Time Left**
-- Color (Light / Text)
+- Sensors
+  - Temperature
+  - [Time Left](#sensor-time-left)
+- Controls
+  - Alarm mode
+  - Sensor type
+  - Min / Max
+- Configuration
+  - Name
+  - Color
 
 ### Pitmaster
-- Power (%)
-- Temperature
-- Mode (Auto / Manual / Off)
-- PID profile
-- Assigned channel
+- Sensors
+  - Power (%)
+  - Temperature
+- Controls
+  - Assigned channel
+  - Mode (Auto / Manual / Off)
+  - PID profile
+  - Set temperature
 
-### System / Diagnostics
-- WiFi RSSI
-- Battery level
-- Charging state
-- Cloud status
-- Cloud URL
-- Device & system information
+### PID Profile
+- Configuration
+  - Name
+  - Actuator
+  - Min / Max PWM (SSR / FAN / DAMPER)
+  - Min / Max Servo Pulse (SERVO / DAMPER)
+  - Start power
+  - Actuator linking (DAMPER)
+  - Lid detection
+
+### System
+- Diagnostics
+  - WiFi RSSI
+  - Battery level
+  - Charging state
+  - Cloud status
+  - Cloud URL
+  - Device & system information
 
 ---
 
@@ -170,8 +185,7 @@ Access options via:
 For each temperature channel, a  
 `channel_*_timeleft` sensor is automatically created.
 
-### Calculation
-
+Calculation:
 - Based on the average temperature change
 - Sliding time window (several minutes)
 
@@ -181,8 +195,7 @@ Time left (min) =
 (Target temperature – current temperature) / temperature increase per minute
 ```
 
-### Behavior
-
+Behavior
 - Decreasing or stagnating temperature → **0 minutes**
 - Disconnected channels → **no value**
 
@@ -194,14 +207,6 @@ Ideal for grilling & cooking processes 🔥
 
 - Official HTTP API:  
   https://github.com/WLANThermo-nano/WLANThermo_ESP32_Software/wiki/HTTP
-
-- Use routes in **lowercase**:
-```
-/setpitmaster
-/setchannels
-/setpid
-/setsystem
-```
 
 ---
 
