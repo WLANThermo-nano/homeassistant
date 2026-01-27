@@ -33,3 +33,9 @@ ALARM_MODES = {
     ALARM_BUZZER: "buzzer",
     ALARM_PUSH_BUZZER: "push_buzzer",
 }
+
+# Actor constants (used for PID profile actuator types in data and number platforms)
+AKTOR_SSR = 0
+AKTOR_FAN = 1
+AKTOR_SERVO = 2
+AKTOR_DAMPER = 3

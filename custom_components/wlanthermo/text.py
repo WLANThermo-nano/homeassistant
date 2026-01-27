@@ -141,6 +141,7 @@ class WlanthermoPidProfileNameText(CoordinatorEntity, TextEntity):
             f"{coordinator.config_entry.entry_id}_pid_{profile_id}_name"
         )
         self._attr_device_info = entry_data["device_info"]
+        self._attr_entity_category = EntityCategory.CONFIG
         self._attr_translation_key = "pidprofile_name"
         self._attr_translation_placeholders = {
             "profile_id": str(profile_id)

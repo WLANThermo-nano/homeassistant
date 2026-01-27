@@ -5,11 +5,8 @@ Defines Python classes for parsing and representing /data and /settings API resp
 """
 from __future__ import annotations
 from typing import Any, Dict, List, Optional
+from .const import AKTOR_SSR, AKTOR_FAN, AKTOR_SERVO, AKTOR_DAMPER
 
-AKTOR_SSR = 0
-AKTOR_FAN = 1
-AKTOR_SERVO = 2
-AKTOR_DAMPER = 3
 class WlanthermoData:
     """
     Container for parsed /data endpoint response.
@@ -212,11 +209,6 @@ class PIDConfig:
         self.tune: bool = self.parse_bool(data.get("tune", False))
         self.jp: int = int(data.get("jp", 0))
 
-    def to_patch(self, **changes) -> dict:
-        payload = {"id": self.id}
-        payload.update(changes)
-        return payload
-
     def aktor_name(self, aktor_map: list[str]) -> str:
         try:
             return aktor_map[self.aktor]
@@ -240,6 +232,15 @@ class PIDConfig:
             "tune": int(self.tune),
             "jp": self.jp,
         }
+    
+    def supports_field(self, field: str) -> bool:
+        if field in ("DCmmin", "DCmmax"):
+            return self.supports_pwm
+        if field in ("SPmin", "SPmax"):
+            return self.supports_servo
+        if field == "link":
+            return self.supports_link
+        return True
 
 
 class DisplayInfo:

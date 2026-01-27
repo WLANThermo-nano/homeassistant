@@ -73,15 +73,15 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     entity_store.setdefault("pitmaster_numbers", set())
     entity_store.setdefault("pidprofile_numbers", set())
 
-    # field, min, max, allowed aktor ids
+    # field, min, max
     PID_NUMBER_FIELDS = [
-        ("jp", 0, 100, None),
-        ("DCmmin", 0, 100, (0, 1, 3)),   # SSR, FAN, DAMPER
-        ("DCmmax", 0, 100, (0, 1, 3)),
-        ("SPmin", 0, 3000, (2, 3)),      # SERVO, DAMPER
-        ("SPmax", 0, 3000, (2, 3)),
-        ("link", 0, 1, (3,)),            # DAMPER
+        ("jp", 0, 100),
+        ("DCmmin", 0, 100),
+        ("DCmmax", 0, 100),
+        ("SPmin", 0, 3000),
+        ("SPmax", 0, 3000),
     ]
+
 
     async def _async_discover_numbers():
         if not coordinator.data:
@@ -114,7 +114,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
         # ---------- PID Profiles ----------
         for profile in getattr(coordinator.api.settings, "pid", []):
-            for field, min_v, max_v, _aktor_filter in PID_NUMBER_FIELDS:
+            for field, min_v, max_v in PID_NUMBER_FIELDS:
                 key = (profile.id, field)
                 if key in entity_store["pidprofile_numbers"]:
                     continue
@@ -342,13 +342,7 @@ class WlanthermoPidProfileNumber(CoordinatorEntity, NumberEntity):
 
     @property
     def available(self) -> bool:
-        for p in getattr(self.coordinator.api.settings, "pid", []):
+        for p in self.coordinator.api.settings.pid:
             if p.id == self._profile_id:
-                if self._field in ("DCmmin", "DCmmax"):
-                    return p.supports_pwm
-                if self._field in ("SPmin", "SPmax"):
-                    return p.supports_servo
-                if self._field == "link":
-                    return p.supports_link
-                return True
+                return p.supports_field(self._field)
         return False

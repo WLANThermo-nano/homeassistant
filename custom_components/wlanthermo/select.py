@@ -16,12 +16,10 @@ PITMASTER_SELECT_FIELDS = [
     {
         "key": "typ",
         "icon": "mdi:state-machine",
-        "options": [],
     },
     {
         "key": "pid",
         "icon": "mdi:chart-bell-curve",
-        "options": [],
     },
 ]
 
@@ -63,13 +61,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     # Prepare PID profile and pitmaster type options for pitmasters
     pid_profiles = []
-    pid_profile_names = []
     pitmaster_type_options: list[str] = []
-    if settings and hasattr(settings, 'pid'):
-        pid_profiles = settings.pid
-        pid_profile_names = [p.name for p in pid_profiles]
-    if not pid_profile_names:
-        pid_profile_names = ["Profile 0", "Profile 1", "Profile 2"]
     if coordinator.data and hasattr(coordinator.data, "pitmaster_types"):
         pitmaster_type_options = coordinator.data.pitmaster_types.options
     if not pitmaster_type_options:
@@ -176,19 +168,18 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                 )
 
                 for field in PITMASTER_SELECT_FIELDS:
-                    field = field.copy()
-
-                    if field["key"] == "typ":
-                        field["options"] = pitmaster_type_options
-                        new_entities.append(
-                            WlanthermoPitmasterSelect(coordinator, pitmaster, field, entry_data)
+                    new_entities.append(
+                        WlanthermoPitmasterSelect(
+                            coordinator,
+                            pitmaster,
+                            field,
+                            entry_data,
+                            channel_options=channel_options,
+                            channel_number_by_name=channel_number_by_name,
+                            channel_name_map=channel_name_map,
                         )
+                    )
 
-                    elif field["key"] == "pid":
-                        field["options"] = pid_profile_names
-                        new_entities.append(
-                            WlanthermoPitmasterSelect(coordinator,pitmaster,field,entry_data,pid_profiles=pid_profiles,)
-                        )
                 entity_store["pitmaster_selects"].add(pm_id)
         if new_entities:
             async_add_entities(new_entities)
@@ -303,7 +294,6 @@ class WlanthermoPitmasterSelect(CoordinatorEntity, SelectEntity):
         field,
         entry_data,
         *,
-        pid_profiles=None,
         channel_options=None,
         channel_number_by_name=None,
         channel_name_map=None,
@@ -313,7 +303,6 @@ class WlanthermoPitmasterSelect(CoordinatorEntity, SelectEntity):
         self._pitmaster_id = pitmaster.id
         self._field = field
 
-        self._pid_profiles = pid_profiles or []
         self._channel_options = channel_options or []
         self._channel_number_by_name = channel_number_by_name or {}
         self._channel_name_map = channel_name_map or {}
@@ -329,7 +318,6 @@ class WlanthermoPitmasterSelect(CoordinatorEntity, SelectEntity):
         )
 
         self._attr_icon = field["icon"]
-        self._attr_options = field["options"]
         self._attr_device_info = entry_data["device_info"]
 
     def _get_pitmaster(self):
@@ -340,6 +328,24 @@ class WlanthermoPitmasterSelect(CoordinatorEntity, SelectEntity):
             if pm.id == self._pitmaster_id:
                 return pm
         return None
+    
+    @property
+    def options(self) -> list[str]:
+        if self._field["key"] == "typ":
+            if self.coordinator.data and hasattr(self.coordinator.data, "pitmaster_types"):
+                return list(self.coordinator.data.pitmaster_types.options)
+            return []
+
+        if self._field["key"] == "pid":
+            settings = self.coordinator.api.settings
+            if settings and hasattr(settings, "pid"):
+                return [p.name for p in settings.pid]
+            return []
+
+        if self._field["key"] == "channel":
+            return self._channel_options or []
+
+        return []
 
     @property
     def current_option(self):
@@ -347,11 +353,11 @@ class WlanthermoPitmasterSelect(CoordinatorEntity, SelectEntity):
         if not pitmaster:
             return None
 
-        if self._field["key"] == "typ" and pitmaster.typ in self._attr_options:
+        if self._field["key"] == "typ":
             return pitmaster.typ
 
         if self._field["key"] == "pid":
-            for p in self._pid_profiles:
+            for p in getattr(self.coordinator.api.settings, "pid", []):
                 if p.id == pitmaster.pid:
                     return p.name
 
@@ -383,7 +389,7 @@ class WlanthermoPitmasterSelect(CoordinatorEntity, SelectEntity):
             data["typ"] = option
 
         elif self._field["key"] == "pid":
-            for p in self._pid_profiles:
+            for p in getattr(self.coordinator.api.settings, "pid", []):
                 if p.name == option:
                     data["pid"] = p.id
                     break

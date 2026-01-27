@@ -118,8 +118,8 @@ class WLANThermoApi:
     async def async_set_pid_profile(self, pid_data: list[dict], method: str = "POST") -> bool:
         """
         Send PID configuration to the device.
-        :param pid_data: list of pid objects (PATCH/PUT/POST supported)
-        :param method: HTTP method ('POST', 'PUT', 'PATCH')
+        :param pid_data: list of pid objects 
+        :param method: HTTP method ('POST' or 'PUT')
         :return: True if successful
         """
         status, text = await self._request(method, "/setpid", pid_data)

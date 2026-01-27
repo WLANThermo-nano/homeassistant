@@ -90,8 +90,7 @@
       "pidprofile_DCmmin": {"name": "PID-Profil {profile_id} PWM Minimum"},
       "pidprofile_DCmmax": {"name": "PID-Profil {profile_id} PWM Maximum"},
       "pidprofile_SPmin": {"name": "PID-Profil {profile_id} Servo Minimum"},
-      "pidprofile_SPmax": {"name": "PID-Profil {profile_id} Servo Maximum"},
-      "pidprofile_link": {"name": "PID-Profil {profile_id} Aktor-Verknüpfung"}
+      "pidprofile_SPmax": {"name": "PID-Profil {profile_id} Servo Maximum"}
     },
     "light":{
       "channel_color": {"name": "Kanal {channel_number} Farbe"}
@@ -113,9 +112,8 @@
       "pidprofile_name": {"name": "PID-Profil {profile_id} Name"}
     },
     "switch": {
-      "pidprofile_opl": {
-        "name": "PID-Profil {profile_id} Deckelerkennung"
-      }
+      "pidprofile_opl": {"name": "PID-Profil {profile_id} Deckelerkennung"},
+      "pidprofile_link": {"name": "PID-Profil {profile_id} Aktor-Verknüpfung"}
     }
 
   }

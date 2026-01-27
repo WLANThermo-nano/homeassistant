@@ -90,8 +90,7 @@
       "pidprofile_DCmmin": {"name": "PID Profile {profile_id} PWM Minimum"},
       "pidprofile_DCmmax": {"name": "PID Profile {profile_id} PWM Maximum"},
       "pidprofile_SPmin": {"name": "PID Profile {profile_id} Servo Minimum"},
-      "pidprofile_SPmax": {"name": "PID Profile {profile_id} Servo Maximum"},
-      "pidprofile_link": {"name": "PID Profile {profile_id} Actuator Link"}
+      "pidprofile_SPmax": {"name": "PID Profile {profile_id} Servo Maximum"}
     },
     "light": {
       "channel_color": {"name": "Channel {channel_number} Color" }
@@ -113,9 +112,8 @@
       "pidprofile_name": {"name": "PID Profile {profile_id} Name"}
     },
     "switch": {
-      "pidprofile_opl": {
-        "name": "PID Profile {profile_id} Open Lid Detection"
-      }
+      "pidprofile_opl": {"name": "PID Profile {profile_id} Open Lid Detection"},
+      "pidprofile_link": {"name": "PID Profile {profile_id} Actuator Link"}
     }
   }
 }
