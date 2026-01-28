@@ -6,6 +6,8 @@ Exposes min/max temperature and pitmaster values as Home Assistant number entiti
 from homeassistant.components.number import NumberEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import EntityCategory
+
+from typing import Any
 from .const import DOMAIN
 
 CHANNEL_NUMBER_FIELDS = [
@@ -60,19 +62,23 @@ ICON_MAP = {
     "link": "mdi:link-variant",
 }
 
-async def async_setup_entry(hass, config_entry, async_add_entities):
+async def async_setup_entry(hass: Any, config_entry: Any, async_add_entities: Any) -> None:
     """
     Set up number entities for channels, pitmasters and PID profiles.
+    Args:
+        hass: Home Assistant instance.
+        config_entry: Config entry for the integration.
+        async_add_entities: Callback to add entities.
+    Returns:
+        None.
     """
     entry_id = config_entry.entry_id
     entry_data = hass.data[DOMAIN][entry_id]
     coordinator = entry_data["coordinator"]
-
     entity_store = entry_data.setdefault("entities", {})
     entity_store.setdefault("channel_numbers", set())
     entity_store.setdefault("pitmaster_numbers", set())
     entity_store.setdefault("pidprofile_numbers", set())
-
     # field, min, max
     PID_NUMBER_FIELDS = [
         ("jp", 0, 100),
@@ -81,44 +87,38 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         ("SPmin", 0, 3000),
         ("SPmax", 0, 3000),
     ]
-
-
-    async def _async_discover_numbers():
+    async def _async_discover_numbers() -> None:
+        """
+        Discover and add new number entities for channels, pitmasters, and PID profiles.
+        Returns:
+            None.
+        """
         if not coordinator.data:
             return
-
         new_entities: list[NumberEntity] = []
-
         # ---------- Channels ----------
         for channel in getattr(coordinator.data, "channels", []):
             ch_id = channel.number
             if channel.number not in entity_store["channel_numbers"]:
-
                 for field in CHANNEL_NUMBER_FIELDS:
                     new_entities.append(
-                        WlanthermoChannelNumber(coordinator,channel,field,entry_data)
+                        WlanthermoChannelNumber(coordinator, channel, field, entry_data)
                     )
-
                 entity_store["channel_numbers"].add(channel.number)
-
         # ---------- Pitmasters ----------
         for pitmaster in getattr(coordinator.data, "pitmasters", []):
             if pitmaster.id not in entity_store["pitmaster_numbers"]:
-
                 for field in PITMASTER_NUMBER_FIELDS:
                     new_entities.append(
-                        WlanthermoPitmasterNumber(coordinator,pitmaster,field,entry_data)
-                )
-
+                        WlanthermoPitmasterNumber(coordinator, pitmaster, field, entry_data)
+                    )
             entity_store["pitmaster_numbers"].add(pitmaster.id)
-
         # ---------- PID Profiles ----------
         for profile in getattr(coordinator.api.settings, "pid", []):
             for field, min_v, max_v in PID_NUMBER_FIELDS:
                 key = (profile.id, field)
                 if key in entity_store["pidprofile_numbers"]:
                     continue
-
                 new_entities.append(
                     WlanthermoPidProfileNumber(
                         coordinator,
@@ -130,11 +130,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                     )
                 )
                 entity_store["pidprofile_numbers"].add(key)
-
-
         if new_entities:
             async_add_entities(new_entities)
-
     await _async_discover_numbers()
     coordinator.async_add_listener(_async_discover_numbers)
 
@@ -144,22 +141,29 @@ class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
     Number entity for a channel's min/max temperature.
     Allows user to set min/max values for each channel.
     """
-    def __init__(self, coordinator, channel, field, entry_data):
+    def __init__(self, coordinator: Any, channel: Any, field: dict, entry_data: dict) -> None:
+        """
+        Initialize a WlanthermoChannelNumber entity.
+        Args:
+            coordinator: Data update coordinator.
+            channel: Channel object.
+            field: Field dictionary for the number entity.
+            entry_data: Dictionary with entry data.
+        Returns:
+            None.
+        """
         super().__init__(coordinator)
         self._channel_number = channel.number
         self._field = field
-
         self._attr_has_entity_name = True
         self._attr_translation_key = f"channel_{field['key']}"
         self._attr_translation_placeholders = {
             "channel_number": str(channel.number)
         }
-
         self._attr_unique_id = (
             f"{coordinator.config_entry.entry_id}_"
             f"channel_{channel.number}_{field['key']}"
         )
-
         self._attr_icon = field["icon"]
         self._attr_native_min_value = field["min"]
         self._attr_native_max_value = field["max"]
@@ -168,9 +172,11 @@ class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
         self._attr_device_info = entry_data["device_info"]
 
 
-    def _get_channel(self):
+    def _get_channel(self) -> Any:
         """
         Helper to get the current channel object from the coordinator data.
+        Returns:
+            Channel object or None if not found.
         """
         channels = getattr(self.coordinator.data, 'channels', [])
         for ch in channels:
@@ -178,11 +184,17 @@ class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
                 return ch
         return None
 
-    async def async_set_native_value(self, value):
+    async def async_set_native_value(self, value: float) -> None:
+        """
+        Set the value for this channel field and update via API.
+        Args:
+            value: New value to set.
+        Returns:
+            None.
+        """
         channel = self._get_channel()
         if not channel:
             return
-
         channel_data = {
             "number": channel.number,
             "name": channel.name,
@@ -193,20 +205,26 @@ class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
             "alarm": channel.alarm,
             "color": channel.color,
         }
-
         result = await self.coordinator.api.async_set_channel(channel_data)
         await self.coordinator.async_request_refresh()
 
     @property
-    def native_value(self):
+    def native_value(self) -> float | None:
         """
         Return the current value of the field for this channel.
+        Returns:
+            The value of the field, or None if unavailable.
         """
         channel = self._get_channel()
         return getattr(channel, self._field["key"], None) if channel else None
-    
+
     @property
-    def available(self):
+    def available(self) -> bool:
+        """
+        Return True if the last coordinator update was successful.
+        Returns:
+            True if available, False otherwise.
+        """
         return self.coordinator.last_update_success
 
 
@@ -214,23 +232,29 @@ class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
     """
     Number entity for a pitmaster's value or set temperature.
     """
-    def __init__(self, coordinator, pitmaster, field, entry_data):
+    def __init__(self, coordinator: Any, pitmaster: Any, field: dict, entry_data: dict) -> None:
+        """
+        Initialize a WlanthermoPitmasterNumber entity.
+        Args:
+            coordinator: Data update coordinator.
+            pitmaster: Pitmaster object.
+            field: Field dictionary for the number entity.
+            entry_data: Dictionary with entry data.
+        Returns:
+            None.
+        """
         super().__init__(coordinator)
-
         self._pitmaster_id = pitmaster.id
         self._field = field
-
         self._attr_has_entity_name = True
         self._attr_translation_key = f"pitmaster_{field['key']}"
         self._attr_translation_placeholders = {
             "pitmaster_number": str(pitmaster.id + 1)
         }
-
         self._attr_unique_id = (
             f"{coordinator.config_entry.entry_id}_"
             f"pitmaster_{pitmaster.id}_{field['key']}"
         )
-
         self._attr_icon = field["icon"]
         self._attr_native_min_value = field["min"]
         self._attr_native_max_value = field["max"]
@@ -239,9 +263,11 @@ class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
         self._attr_device_info = entry_data["device_info"]
 
 
-    def _get_pitmaster(self):
+    def _get_pitmaster(self) -> Any:
         """
         Helper to get the current pitmaster object from the coordinator data.
+        Returns:
+            Pitmaster object or None if not found.
         """
         pitmasters = getattr(self.coordinator.data, 'pitmasters', [])
         for pm in pitmasters:
@@ -249,9 +275,13 @@ class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
                 return pm
         return None
 
-    async def async_set_native_value(self, value):
+    async def async_set_native_value(self, value: float) -> None:
         """
         Set the value for this pitmaster field and update via API.
+        Args:
+            value: New value to set.
+        Returns:
+            None.
         """
         pitmaster = self._get_pitmaster()
         if not pitmaster:
@@ -264,20 +294,26 @@ class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
             "set": value if self._field["key"] == "set" else pitmaster.set,
             "typ": pitmaster.typ,
         }
-        
         result = await self.coordinator.api.async_set_pitmaster(pitmaster_data)
         await self.coordinator.async_request_refresh()
 
     @property
-    def native_value(self):
+    def native_value(self) -> float | None:
         """
         Return the current value of the field for this pitmaster.
+        Returns:
+            The value of the field, or None if unavailable.
         """
         pitmaster = self._get_pitmaster()
         return getattr(pitmaster, self._field["key"], None) if pitmaster else None
-    
+
     @property
-    def available(self):
+    def available(self) -> bool:
+        """
+        Return True if the last coordinator update was successful.
+        Returns:
+            True if available, False otherwise.
+        """
         return self.coordinator.last_update_success
     
 
@@ -292,19 +328,29 @@ class WlanthermoPidProfileNumber(CoordinatorEntity, NumberEntity):
 
     def __init__(
         self,
-        coordinator,
-        entry_data,
+        coordinator: Any,
+        entry_data: dict,
         *,
         profile_id: int,
         field: str,
         min_value: int,
         max_value: int,
-    ):
+    ) -> None:
+        """
+        Initialize a WlanthermoPidProfileNumber entity.
+        Args:
+            coordinator: Data update coordinator.
+            entry_data: Dictionary with entry data.
+            profile_id: ID of the PID profile.
+            field: Field name for the number entity.
+            min_value: Minimum value for the field.
+            max_value: Maximum value for the field.
+        Returns:
+            None.
+        """
         super().__init__(coordinator)
-
         self._profile_id = profile_id
         self._field = field
-
         self._attr_unique_id = (
             f"{coordinator.config_entry.entry_id}_pid_{profile_id}_{field}"
         )
@@ -315,20 +361,31 @@ class WlanthermoPidProfileNumber(CoordinatorEntity, NumberEntity):
         }
         self._attr_entity_category = EntityCategory.CONFIG
         self._attr_icon = ICON_MAP.get(field, "mdi:numeric")
-
         self._attr_native_min_value = min_value
         self._attr_native_max_value = max_value
         self._attr_native_step = 1
 
 
     @property
-    def native_value(self):
+    def native_value(self) -> float | None:
+        """
+        Return the current value of the field for this PID profile.
+        Returns:
+            The value of the field, or None if unavailable.
+        """
         for profile in getattr(self.coordinator.api.settings, "pid", []):
             if profile.id == self._profile_id:
                 return getattr(profile, self._field, None)
         return None
 
-    async def async_set_native_value(self, value):
+    async def async_set_native_value(self, value: float) -> None:
+        """
+        Set the value for this PID profile field and update via API.
+        Args:
+            value: New value to set.
+        Returns:
+            None.
+        """
         for p in self.coordinator.api.settings.pid:
             if p.id == self._profile_id:
                 setattr(p, self._field, value)
@@ -342,6 +399,11 @@ class WlanthermoPidProfileNumber(CoordinatorEntity, NumberEntity):
 
     @property
     def available(self) -> bool:
+        """
+        Return True if the field is supported by the PID profile.
+        Returns:
+            True if available, False otherwise.
+        """
         for p in self.coordinator.api.settings.pid:
             if p.id == self._profile_id:
                 return p.supports_field(self._field)
