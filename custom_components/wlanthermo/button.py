@@ -72,7 +72,7 @@ class WlanthermoTelegramTestButton(CoordinatorEntity, ButtonEntity):
     Button to send a test Telegram message.
     """
     _attr_has_entity_name = True
-    _attr_icon = "mdi:telegram"
+    _attr_icon = "mdi:message-alert"
     _attr_entity_category = EntityCategory.CONFIG
     _attr_translation_key = "telegram_test"
 
