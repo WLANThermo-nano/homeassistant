@@ -48,6 +48,8 @@ Other models and firmware versions may also work, but are not officially tested.
 - 🌡️ Dynamic temperature sensors for all channels (name & number)
 - 🎛️ Dynamic pitmaster sensors (power, temperature, mode, PID, channel)
 - ⏱️ Time Left sensor for each active channel
+- ✉️ Configuration of notifications via Pushover and Telegram
+- 📶 Bluetooth temperature sensor configuration
 - ☁️ Cloud sensors
 - 🔋 System diagnostics:
   - WiFi RSSI
@@ -177,6 +179,7 @@ Access options via:
   - Cloud status
   - Cloud URL
   - Device & system information
+  - Restart Integration
 
 ### Notification
 - Configuration
@@ -190,6 +193,9 @@ Access options via:
 - Configuration
   - Activate Bluetooth
   - Selection of available Channels
+
+**Important** you need to restart the integration after changing Bluetooth Settings to discover BT Sensors.  
+Use the "Reload Integration" button from System Diagnostics.
 
 ---
 

@@ -48,6 +48,8 @@ Andere Modelle und Firmware-Versionen könnten ebenfalls funktionieren, sind abe
 - 🌡️ Temperatur-Sensoren dynamisch für alle Kanäle (Name & Nummer)
 - 🎛️ Pitmaster-Sensoren dynamisch (Leistung, Temperatur, Modus, PID, Kanal)
 - ⏱️ Restzeit-Sensor pro aktivem Kanal
+- ✉️ Konfiguration von Beanchrichtigungen über Pushover und Telegram
+- 📶 Bluetooth Temperatur-Sensoren Konfiguration
 - ☁️ Cloud-Sensoren 
 - 🔋 Systemdiagnose:
   - WLAN-RSSI
@@ -191,7 +193,10 @@ Die Optionen erreichst du über:
 ### Bluetooth
 - Konfiguration
   - Bluetooth Aktivieren
-  - Auswahl der übertragenden Kanäle
+  - Auswahl der übertragenden Kanäle  
+
+**Wichtig:** Nach Änderungen an den Bluetooth-Einstellungen muss die Integration neu gestartet werden, damit BT-Sensoren erkannt werden.  
+Nutze dazu die Schaltfläche „Integration neu starten“ in der Systemdiagnose.
 
 ---
 
