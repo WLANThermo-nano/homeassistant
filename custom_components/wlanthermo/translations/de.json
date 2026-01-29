@@ -153,6 +153,7 @@
     "button": {
       "telegram_test": {"name": "Push Telegram Testen"},
       "pushover_test": {"name": "Push Pushover Testen"},
+      "reload_integration": {"name": "Integration neu laden"}
     }
   }
 }

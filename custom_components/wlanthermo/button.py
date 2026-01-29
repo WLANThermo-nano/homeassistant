@@ -53,8 +53,15 @@ async def async_setup_entry(
                 )
             )
             entity_store["buttons"].add(key)
-
-
+        key = "reload_integration"
+        if key not in entity_store["buttons"]:
+            new_entities.append(
+                WlanthermoReloadIntegrationButton(
+                    coordinator,
+                    entry_data,
+                )
+            )
+            entity_store["buttons"].add(key)
         if new_entities:
             async_add_entities(new_entities)
 
@@ -142,4 +149,26 @@ class WlanthermoPushoverTestButton(CoordinatorEntity, ButtonEntity):
         return (
             bool(pushover.token)
             and bool(pushover.user_key)
+        )
+    
+class WlanthermoReloadIntegrationButton(CoordinatorEntity, ButtonEntity):
+    """
+    Button to reload the WLANThermo integration.
+    """
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:reload"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_translation_key = "reload_integration"
+
+    def __init__(self, coordinator, entry_data: dict) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = (
+            f"{coordinator.config_entry.entry_id}_reload_integration"
+        )
+        self._attr_device_info = entry_data["device_info"]
+
+    async def async_press(self) -> None:
+        # Reload the integration
+        await self.hass.config_entries.async_reload(
+            self.coordinator.config_entry.entry_id
         )
