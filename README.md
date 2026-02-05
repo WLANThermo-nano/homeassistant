@@ -1,10 +1,12 @@
+
 # WLANThermo – Home Assistant Integration
 
 ![Version](https://img.shields.io/badge/version-0.3.0-informational)
 ![Lizenz](https://img.shields.io/badge/license-MIT-green)
-![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025%2B-blue)
+![Home Assistant](https://img.shields.io/badge/HA-2025.12%2B-blue)
 [![Support](https://img.shields.io/badge/support-WLANThermo%20Forum-lightgrey)](https://wlanthermo.de/forums/)
-![Owner](https://img.shields.io/badge/code%20owner-@MStapelfeldt-purple)
+![Maintainer](https://img.shields.io/badge/maintainer-@MStapelfeldt-informational)
+![Owner](https://img.shields.io/badge/code%20owner-@sochs-purple)
 
 ---
 
@@ -21,11 +23,15 @@ Es besteht **kein offizieller Support** durch den Autor oder das WLANThermo-Team
 
 ---
 
-## Übersicht
+## Dokumentation & Wiki
 
-Diese Integration verbindet Home Assistant mit **WLANThermo Geräten**  
+Ausführliche Informationen findest du in der [deutschen Wiki](https://github.com/WLANThermo-nano/homeassistant/wiki) oder [englischen Wiki](https://github.com/WLANThermo-nano/homeassistant/wiki/Home-en).
 
-Sie liest Sensordaten, Systemstatus und Pitmaster-Informationen aus und stellt diese als native Home-Assistant-Entitäten bereit.
+---
+
+## Kurzüberblick
+
+Diese Integration verbindet Home Assistant mit **WLANThermo Geräten** und stellt Sensordaten, Systemstatus und Pitmaster-Informationen als native Home-Assistant-Entitäten bereit.
 
 Die Integration ist **vollständig UI-basiert**, YAML ist nicht erforderlich.
 
@@ -58,65 +64,35 @@ Andere Modelle und Firmware-Versionen könnten ebenfalls funktionieren, sind abe
 - 🎨 Kanalfarben
 - 🌍 Vollständige Übersetzungsunterstützung (DE / EN)
 - ⚙️ Konfigurierbares Scan-Intervall
-- 🔌 Offline-toleranter Start (Entitäten erscheinen automatisch)
-- 🔄 Options-Flow für erweiterte Einstellungen
 - 👻 Option: Inaktive Sensoren als *unavailable* anzeigen
 
 ---
 
 ## Dashboard (optional)
 
-Für das im Repository vorhandene Beispiel-Dashboard `wlanthermo.yaml` werden folgende Frontend-Erweiterungen benötigt (über **HACS → Frontend**):
+Das Beispiel‑Dashboard `wlanthermo.yaml` ist optional und dient als Vorlage.  
 
-- [Auto-Entities](https://github.com/thomasloven/lovelace-auto-entities) (`auto-entities`)
-- [Button Card](https://github.com/custom-cards/button-card) (`button-card`)
-- [Mushroom](https://github.com/piitaya/lovelace-mushroom) (`Mushroom`)
-- [ApexCharts Card](https://github.com/RomRider/apexcharts-card) (`apexcharts-card`)
-- [Card Mod](https://github.com/thomasloven/lovelace-card-mod) (`card-mod`)
-- [Browser Mod](https://github.com/thomasloven/hass-browser_mod) (`browser-mod`)
-
-**Wichtig:**  
-Alle Vorkommen von `wlanthermo` müssen auf deinen Gerätenamen angepasst werden.
-Alle Entitätsnamen sind auf deutsch hinterlegt. Für englische Namen, könnte ihr `wlanthermo_en.yaml`.
-
-Beispiel:
-```yaml
-device_name: wlanthermo → nano_v3
-sensor.wlanthermo_kanal_*_temperature → sensor.nano_v3_kanal_*_temperature
-sensor.wlanthermo_kanal_*_temperature → sensor.nano_v3_channel_*_temperature
-
-```
+[Dashboard Erklärung](https://github.com/WLANThermo-nano/homeassistant/wiki/dashboard)
 
 ---
 
-## Installation über HACS (empfohlen)
+## Installation
 
-1. Öffne Home Assistant und gehe zu  
-   **Menü → HACS** (deine_HA_URL/hacs/dashboard)
-2. Klicke oben rechts auf die drei Punkte (⋮) → **Benutzerdefiniertes Repository**
-3. Gib folgende URL ein: `https://github.com/WLANThermo-nano/homeassistant` Typ: **Integration**
-4. Suche anschließend nach **WLANThermo**
-5. Installiere die Integration
-6. Starte Home Assistant neu
-
-## Manuelle Installation
-
-1. Repository herunterladen oder entpacken
-2. Ordner  `custom_components/wlanthermo` nach `<HA config>/custom_components/` kopieren
-3. Home Assistant neu starten
+[Installation](docs/de/setup.md)
+über HACS (empfohlen):  
+**Benutzerdefiniertes Repository**: `https://github.com/WLANThermo-nano/homeassistant`  
+manuell:  
+`custom_components/wlanthermo` nach `<HA config>/custom_components/` kopieren
 
 ---
 
 ## Einrichtung
 
-1. Home Assistant öffnen
-2. **Einstellungen → Geräte & Dienste → Integration hinzufügen**
-3. **WLANThermo** auswählen
-4. Gerätenamen eingeben (sollte einzigartig sein)
-5. IP-Adresse / Host, Port und optionales Pfad-Präfix angeben
-6. `Inaktive Sensoren als nicht verfügbar anzeigen` regelt ob Temperaturen als `999` anzeigt werden oder **nicht verfügbar** sind
-7. Falls Authentificierung nötig ist, diese einschalten und Benutzername/Passwort eingeben
-8. Einrichtung abschließen
+[Einrichtung](https://github.com/WLANThermo-nano/homeassistant/wiki/Einrichtung#einrichtung)  
+1. **Einstellungen → Geräte & Dienste → Integration hinzufügen**
+2. **WLANThermo** auswählen
+3. IP-Adresse / Host angeben
+4. OK drücken
 
 ---
 
@@ -125,117 +101,20 @@ sensor.wlanthermo_kanal_*_temperature → sensor.nano_v3_channel_*_temperature
 Die Optionen erreichst du über:
 
 **Einstellungen → Geräte & Dienste → WLANThermo → Optionen/Zahnrad**
-
-- **IP-Adresse / Port / Präfix**  
-  Kann angepasst werden, falls sich die IP im Router ändert oder Einstellungen sich geändert haben
-- **Scan-Intervall**  
-  Legt fest, wie oft Daten vom WLANThermo abgerufen werden  
-  Standard: **10 Sekunden**
-- **Inaktive Sensoren als nicht verfügbar anzeigen**  
-  regelt ob Temperaturen als `999` anzeigt werden oder **nicht verfügbar** sind
-- **Authentifizierung**  
-  Benutzername / Passwort, falls in der Weboberfläche aktiviert
+[Optionen](https://github.com/WLANThermo-nano/homeassistant/wiki/Einrichtung#optionen-der-integration)
 
 ---
 
 ## Entitäten in HA
 
-### Kanäle
-- Sensoren
-  - Temperatur
-  - [Restzeit](#sensor-restzeit)
-- Steuerelemente
-  - Alarmmodus
-  - Sensortyp
-  - Min / Max
-- Konfiguration
-  - Name
-  - Farbe
-  
-### Pitmaster
-- Sensoren
-  - Leistung (%)
-  - Temperatur
-- Steuerelemente
-  - Zugewiesener Kanal
-  - Modus (Auto / Manuell / Aus)
-  - PID-Profil
-  - Solltemperatur
+👉 Alle Entitäten im Detail findest du in der Wiki:  
+[Entitäten & Sensoren](https://github.com/WLANThermo-nano/homeassistant/wiki/entities)
 
-### Pit Profil
-- Konfiguration
-  - Name
-  - Aktor
-  - Min / Max PWM (SSR / FAN / DAMPER)
-  - Min / Max Servo Puls (SERVO / DAMPER)
-  - Startleistung
-  - Aktor Verknüpfung (DAMPER)
-  - Deckelerkennung
+## Entwicklung
 
-### System
-- Diagnose
-  - WLAN-RSSI
-  - Batteriestand
-  - Ladezustand
-  - Cloud-Status
-  - Cloud-URL
-  - und andere  
-    Geräte- & Systeminformationen
+[Entwicklung](https://github.com/WLANThermo-nano/homeassistant/wiki/development)
 
-### Benachrichtigungen
-- Konfiguration
-  - Benachrichtigungen Aktivieren (Telegram/Pushover)
-  - Token Eingabe (Telegram/Pushover)
-  - User Key / Chat ID (Telegram/Pushover)
-  - Nachrichtenpriorität festlegen  (Pushover)
-  - Testmessage senden (Telegram/Pushover)
-
-### Bluetooth
-- Konfiguration
-  - Bluetooth Aktivieren
-  - Auswahl der übertragenden Kanäle  
-
-**Wichtig:** Nach Änderungen an den Bluetooth-Einstellungen muss die Integration neu gestartet werden, damit BT-Sensoren erkannt werden.  
-Nutze dazu die Schaltfläche „Integration neu starten“ in der Systemdiagnose.
-
----
-
-## Sensor: Restzeit
-
-Für jeden Temperaturkanal wird automatisch ein Sensor  
-`kanal_*_restzeit` erstellt.
-
-Berechnung:
-- Basierend auf dem Durchschnitt der Temperaturänderung
-- Gleitendes Zeitfenster (mehrere Minuten)
-
-Formel:
-```
-Restzeit (min) =
-(Zieltemperatur – aktuelle Temperatur) / Temperaturanstieg pro Minute
-```
-
-Verhalten
-- Sinkende oder stagnierende Temperatur → **0 Minuten**
-- Nicht verbundene Kanäle → **kein Wert**
-
-Ideal für Grill- & Garprozesse 🔥
-
-## Konfiguration Benachrichtigungen  
-
-Um Telegram oder Pushover ein zu richten sind Token und Chat ID/User key nötig. Wie ihr diese einrichtet könnt ihr unter [Push-Notification](https://github.com/WLANThermo-nano/WLANThermo_ESP32_Software/wiki/Push-Notification) nachlesen.  
-Nur wenn beide Textfelder ausgefüllt sind, könnt ihr die Benachrichtigung testen.
-
----
-
-## API-Hinweise
-
-- Offizielle HTTP-API: (Nano V1(+) sind fast gleich.)  
-  https://github.com/WLANThermo-nano/WLANThermo_ESP32_Software/wiki/HTTP
-
----
-
-## Entwicklung & Beiträge
-
-Pull Requests, Bugreports und Feature-Wünsche sind willkommen ❤️  
-Bitte möglichst mit Logs und klarer Fehlerbeschreibung.
+## WIKI
+- [FAQ](https://github.com/WLANThermo-nano/homeassistant/wiki/faq)
+- [Troubleshooting](https://github.com/WLANThermo-nano/homeassistant/wiki/troubleshooting)
+- [API Hinweise](https://github.com/WLANThermo-nano/homeassistant/wiki/api)

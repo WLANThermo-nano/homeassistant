@@ -9,8 +9,9 @@ button_card_templates:
     name: |
       [[[
         const id = entity.entity_id.match(/channel_(\d+)_/)[1];
+        const dev = variables.device_name;
         const temp = entity.state !== 'unavailable' ? entity.state + "°C" : "N/A";
-        return "Channel " + id + "  " + temp;
+        return states[`text.${dev}_kanal_${id}_name`]?.state + "  " + temp;
       ]]]
     custom_fields:
       time_left: |
