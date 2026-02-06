@@ -1,96 +1,185 @@
 button_card_templates:
-  wlt_kanal_button:
+  wlt_card_base:
     variables:
       device_name: wlanthermo
     show_icon: true
     show_name: true
-    show_state: false
-    icon: mdi:thermometer
-    name: |
-      [[[
-          const id = parseInt(entity.entity_id.match(/kanal_(\d+)_/)[1]);
-          const dev = variables.device_name;
-          const temp = entity.state !== 'unavailable' ? entity.state + "°C" : "N/A";
-          return states[`text.${dev}_kanal_${id}_name`]?.state + "  " + temp;
-      ]]]
-    custom_fields:
-      restzeit: |
-        [[[ 
-          const id = entity.entity_id.match(/kanal_(\d+)_/)[1];
-          const dev = variables.device_name;
-          const tl = states[`sensor.${dev}_kanal_${id}_restzeit`];
-          return tl.state != 0 ? `Restzeit: ${tl.state}` : "Restzeit: ~ ";
-        ]]]
-      minmax: |
-        [[[
-          const id = entity.entity_id.match(/kanal_(\d+)_/)[1];
-          const dev = variables.device_name;
-          const min = states[`number.${dev}_kanal_${id}_minimum`]?.state;
-          const max = states[`number.${dev}_kanal_${id}_maximum`]?.state;
-          return `
-            <div style="
-              display:flex;
-              align-items:center;
-              justify-content:space-between;
-              width:100%;
-              font-size:13px;
-            ">
-              <span style="display:flex; align-items:center; gap:4px;">
-                <ha-icon icon="mdi:chevron-down"style="--mdc-icon-size:14px;"></ha-icon>
-                ${min}°C
-              </span>
-              <span style="display:flex; align-items:center; gap:4px;">
-                <ha-icon icon="mdi:chevron-up"style="--mdc-icon-size:14px;"></ha-icon>
-                ${max}°C
-              </span>
-            </div>
-          `;
-        ]]]
+    show_state: true
     styles:
       grid:
-        - grid-template-areas: '"i n" "i minmax" "i restzeit"'
-        - grid-template-columns: 30px 1fr
-        - grid-template-rows: auto auto
         - row-gap: 2px
       card:
         - padding: 4px
         - height: 70px
         - border-radius: 12px
-        - background-color: |
-            [[[
-              const id = entity.entity_id.match(/kanal_(\d+)_/)[1];
-              const dev = variables.device_name;
-
-              const temp = parseFloat(states[`sensor.${dev}_kanal_${id}_temperatur`]?.state);
-              const max  = parseFloat(states[`number.${dev}_kanal_${id}_maximum`]?.state);
-
-              if (isNaN(temp) || isNaN(max)) {
-                return "rgba(250,250,0,0.3)";  // fallback bei fehlenden Werten
-              }
-
-              return temp < max
-                ? "rgba(0,150,0,0.3)"   // grün
-                : "rgba(150,0,0,0.3)";  // rot
-            ]]]
       name:
         - font-size: 14px
         - font-weight: bold
-        - grid-area: 'n'
         - align-self: end
-      custom_fields:
-        restzeit:
-          - font-size: 12px
-          - grid-area: restzeit
-          - align-self: start
-        minmax:
-          - grid-area: minmax
-          - align-self: start
-          - font-size: 12px
       icon:
         - width: 22px
         - height: 22px
-        - grid-area: i
         - align-self: center
+      custom_fields:
+        time_left:
+          - font-size: 12px
+          - align-self: start
+        minmax:
+          - align-self: start
+          - font-size: 12px
+          - >
+            .minmax-wrapper {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              width: 100%;
+            }
+            .minmax-left, .minmax-right {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+            }
+            ha-icon {
+              --mdc-icon-size: 14px;
+            }
+        min:
+          - font-size: 12px
+          - justify-self: end
+          - align-self: end
+        max:
+          - font-size: 12px
+          - justify-self: end
+          - align-self: end
+  wlt_status_base:
+    template: wlt_card_base
+    styles:
+      grid:
+        - grid-template-areas: '"i n" "i s"'
+        - grid-template-columns: 44px 1fr
+        - grid-template-rows: auto auto
+        - column-gap: 10px
+        - align-items: center
+      icon:
+        - width: 36px
+        - height: 36px
+        - color: '#8a8f98'
+      name:
+        - font-size: 13px
+        - color: '#cfd3d6'
+      state:
+        - font-size: 12px
+        - color: '#9aa0a6'
+  wlt_kanal_button:
+    template: wlt_card_base
+    show_icon: false
+    show_state: false
+    name: |
+      [[[
+        const id = entity.entity_id.match(/kanal_(\d+)_/)[1];
+        const dev = variables.device_name;
+        return states[`text.${dev}_kanal_${id}_name`]?.state;
+      ]]]
+    custom_fields:
+      icon: |
+        <ha-icon icon="mdi:thermometer" style="--mdc-icon-size: 24px;"></ha-icon>
+      temp: |
+        [[[
+          const id = entity.entity_id.match(/kanal_(\d+)_/)[1];
+          const dev = variables.device_name;
+          const t = parseFloat(
+            states[`sensor.${dev}_kanal_${id}_temperatur`]?.state
+          );
+          const sp = parseFloat(
+            states[`number.${dev}_kanal_${id}_maximum`]?.state
+          );
+          const sm = parseFloat(
+            states[`number.${dev}_kanal_${id}_minimum`]?.state
+          );
+          if (isNaN(t) || isNaN(sp)) return "–";
+          const r = Math.min(1, t / sp);
+          const color =
+            t < sm ? '60, 170, 230' :
+            r < 0.8 ? '0,180,0' :
+            r < 1.0 ? '255,180,0' :
+                      '200,0,0';
+          return `
+            <div style="
+              width:100%;
+              text-align:center;
+              padding:6px;
+              border-radius:10px;
+              background: linear-gradient(
+                to right,
+                rgba(${color},0.6) ${r*100}%,
+                rgba(0,0,0,0.15) ${r*100}%
+              );
+            ">
+              ${t.toFixed(1)}°C
+            </div>
+          `;
+        ]]]
+      max: |
+        [[[
+          const id = entity.entity_id.match(/kanal_(\d+)_/)[1];
+          const dev = variables.device_name;
+          const max = states[`number.${dev}_kanal_${id}_maximum`]?.state;
+          return `<ha-icon icon="mdi:chevron-up" style="--mdc-icon-size:14px;"></ha-icon>
+                ${max}°C`;
+        ]]]
+
+      min: |
+        [[[
+          const id = entity.entity_id.match(/kanal_(\d+)_/)[1];
+          const dev = variables.device_name;
+          const min = states[`number.${dev}_kanal_${id}_minimum`]?.state;
+          return `<ha-icon icon="mdi:chevron-down" style="--mdc-icon-size:14px;"></ha-icon>
+                ${min}°C`;
+        ]]]
+
+      time_left: |
+        [[[
+          const id = entity.entity_id.match(/kanal_(\d+)_/)[1];
+          const dev = variables.device_name;
+          const r = states[`sensor.${dev}_kanal_${id}_restzeit`]?.state;
+          return r && r !== "0" ? `⏱ ${r}` : "⏱ ~";
+        ]]]
+
+    styles:
+      grid:
+        - grid-template-areas: |
+            "name        temp    max"
+            "icon        temp    max"
+            "icon        temp    min"
+            "icon    time_left   min"
+        - grid-template-columns: 60px 1fr 60px
+        - grid-template-rows: auto auto auto auto
+
+      name:
+        - grid-area: name
+        - font-size: 12px
+        - font-weight: normal
+
+      custom_fields:
+        icon:
+          - grid-area: icon
+          - align-self: center
+        temp:
+          - grid-area: temp
+          - font-size: 18px
+          - font-weight: bold
+        max:
+          - grid-area: max
+          - font-size: 12px
+          - opacity: 1
+        min:
+          - grid-area: min
+          - font-size: 12px
+          - opacity: 1
+        time_left:
+          - grid-area: time_left
+          - font-size: 12px
+          - opacity: 1
+          - color: '#9aa0a6'
     tap_action:
       action: fire-dom-event
       browser_mod:
@@ -153,8 +242,9 @@ button_card_templates:
                   return `select.${dev}_kanal_${id}_sensortyp`;
                 ]]]
   wlt_pitmaster_button:
-    show_icon: true
-    show_name: true
+    template: wlt_card_base
+    show_icon: false
+    show_name: false
     show_state: false
     icon: mdi:thermometer
     variables:
@@ -163,72 +253,110 @@ button_card_templates:
       [[[
         const id = parseInt(entity.entity_id.match(/pitmaster_(\d+)_/)[1]);
         const temp = entity.state !== 'unavailable' ? entity.state + "°C" : "N/A";
-        return "Pitmaster " + (id + 1) + "  " + temp;
+        return "Pitmaster " + (id) + "  " + temp;
       ]]]
     custom_fields:
-      restzeit: |
-        [[[ 
-          const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
-          const dev = variables.device_name;
-          const tl = states[`sensor.${dev}_pitmaster_${id}_leistung`];
-          return tl.state != 0 ? `Geschwindigkeit: ${tl.state} %` : "Geschwindigkeit: ~ ";
-        ]]]
-      max: |
+      fan: |
         [[[
           const id = entity.entity_id.match(/pitmaster_(\d+)_/)[1];
           const dev = variables.device_name;
-          const max = states[`number.${dev}_pitmaster_${id}_leistung`]?.state;
+          const spd = parseFloat(states[`sensor.${dev}_pitmaster_${id}_leistung`]?.state || 0);
+          const duration = Math.max(0.4, 3 - spd/30);
+          const anim = spd > 0
+            ? `animation: wlt_spin_${id} ${duration}s linear infinite;`
+            : `animation: none;`;
+          return `
+            <style>
+              @keyframes wlt_spin_${id} {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+              }
+            </style>
+            <div style="text-align:center">
+              <ha-icon icon="mdi:fan" style="
+                color: hsl(${120 - spd}, 80%, 50%);
+                ${anim}
+                display: inline-block;
+              "></ha-icon>
+            </div>
+          `;
+        ]]]
+      temp: |
+        [[[
+          const id = parseInt(entity.entity_id.match(/pitmaster_(\d+)_/)[1]);
+          const dev = variables.device_name;
+          const t = parseFloat(
+            states[`sensor.${dev}_pitmaster_${id}_temperatur`]?.state
+          );
+          const sp = parseFloat(
+            states[`number.${dev}_pitmaster_${id}_solltemperatur`]?.state
+          );
+          if (isNaN(t) || isNaN(sp)) return "–";
+          const r = Math.min(1, t / sp);
+          const color =
+            r < 0.8 ? '0,180,0' :
+            r < 1.0 ? '255,180,0' :
+                      '200,0,0';
           return `
             <div style="
-              display:flex;
-              align-items:center;
-              justify-content:space-between;
               width:100%;
-              font-size:13px;
+              text-align:center;
+              padding:6px;
+              border-radius:10px;
+              background: linear-gradient(
+                to right,
+                rgba(${color},0.6) ${r*100}%,
+                rgba(0,0,0,0.15) ${r*100}%
+              );
             ">
-              <span style="display:flex; align-items:center; gap:4px;">
-                <ha-icon icon="mdi:chevron-up"style="--mdc-icon-size:14px;"></ha-icon>
-                ${max}°C
-              </span>
+              ${sp.toFixed(1)}°C
+            </div>
+          `;
+        ]]]
+      info: |
+        [[[
+          const id = parseInt(entity.entity_id.match(/pitmaster_(\d+)_/)[1]);
+          const dev = variables.device_name;
+          const sp = states[`number.${dev}_pitmaster_${id}_solltemperatur`]?.state;
+          const spd = states[`sensor.${dev}_pitmaster_${id}_leistung`]?.state;
+          const t = states[`sensor.${dev}_pitmaster_${id}_temperatur`]?.state;
+          const speedText =
+            spd && spd !== "0"
+              ? ` ${spd} %`
+              : " ~ %";
+          return `
+            <div style="font-size:13px; line-height:1.4">
+              <b>Pit ${id}</b><br>
+              ${t}°C<br>
+              ${speedText}
             </div>
           `;
         ]]]
     styles:
       grid:
-        - grid-template-areas: '"i n" "i max" "i restzeit"'
-        - grid-template-columns: 30px 1fr
-        - grid-template-rows: auto auto
-        - row-gap: 2px
-      card:
-        - padding: 4px
-        - height: 70px
-        - border-radius: 12px
-        - background-color: |
-            [[[
-              return entity && entity.state !== 'unavailable'
-                ? 'rgba(0,150,0,0.3)'
-                : 'rgba(150,0,0,0.3)';
-            ]]]
-      name:
-        - font-size: 14px
-        - font-weight: bold
-        - grid-area: 'n'
-        - align-self: end
+        - grid-template-columns: 70px 1fr 80px
+        - grid-template-areas: '"fan temp info"'
+        - align-items: center
       custom_fields:
-        restzeit:
-          - font-size: 12px
-          - grid-area: restzeit
-          - align-self: start
-        max:
-          - font-size: 12px
-          - grid-area: max
+        fan:
+          - grid-area: fan
+          - justify-self: start
+          - align-self: center
+          - font-size: 20px
+        temp:
+          - grid-area: temp
+          - overflow: visible
+          - text-overflow: unset
+          - justify-self: stretch
+          - font-size: 28px
+          - font-weight: bold
+          - color: '#e8eaed'
+        info:
+          - grid-area: info
           - justify-self: end
-          - align-self: start
-      icon:
-        - width: 22px
-        - height: 22px
-        - grid-area: i
-        - align-self: center
+          - font-size: 12px
+          - line-height: 1.4
+          - color: '#cfd3d6'
     tap_action:
       action: fire-dom-event
       browser_mod:
@@ -273,12 +401,10 @@ button_card_templates:
                   return `select.${dev}_pitmaster_${id}_modus`;
                 ]]]
   wlt_pitprofil_button:
+    template: wlt_card_base
     show_icon: false
-    show_name: true
     show_state: false
     icon: mdi:thermometer
-    variables:
-      device_name: wlanthermo
     name: |
       [[[
         const dev = variables.device_name;
@@ -286,17 +412,8 @@ button_card_templates:
         return states[`text.${dev}_pid_profil_${id}_name`]?.state;
       ]]]
     styles:
-      card:
-        - padding: 4px
-        - height: 70px
-        - border-radius: 12px
       name:
-        - font-size: 14px
-        - font-weight: bold
         - align-self: center
-      icon:
-        - width: 22px
-        - height: 22px
     tap_action:
       action: fire-dom-event
       browser_mod:
@@ -356,27 +473,22 @@ button_card_templates:
                   return `switch.${variables.device_name}_pid_profil_${id}_aktor_verknupfung`;
                 ]]]
   wlt_notification_button:
+    template: wlt_card_base
     show_icon: false
-    show_name: true
     show_state: false
     icon: mdi:thermometer
-    variables:
-      device_name: wlanthermo
     name: |
       [[[
         return "Benachichtigungen";
       ]]]
     styles:
       card:
-        - padding: 4px
-        - height: 70px
-        - border-radius: 12px
         - background: |
             [[[
               const pushover = states['switch.wlanthermo_push_pushover_aktiv']?.state === 'on';
               const telegram = states['switch.wlanthermo_push_telegram_aktiv']?.state === 'on';
-              const left = pushover ? 'rgba(0,180,0,0.6)' : 'rgba(200,0,0,0.6)';
-              const right = telegram ? 'rgba(0,180,0,0.6)' : 'rgba(200,0,0,0.6)';
+              const left = pushover ? 'rgba(140,140,140,1)' : 'rgba(140,140,140,0.1)';
+              const right = telegram ? 'rgba(140,140,140,1)' : 'rgba(140,140,140,0.1)';
               return `
                 linear-gradient(
                   to right,
@@ -386,12 +498,7 @@ button_card_templates:
               `;
             ]]]
       name:
-        - font-size: 14px
-        - font-weight: bold
         - align-self: center
-      icon:
-        - width: 22px
-        - height: 22px
     tap_action:
       action: fire-dom-event
       browser_mod:
@@ -411,8 +518,8 @@ button_card_templates:
               - text.wlanthermo_push_telegram_chat_id
               - button.wlanthermo_push_telegram_testen
   wlt_bluetooth_button:
+    template: wlt_card_base
     show_icon: false
-    show_name: true
     show_state: false
     icon: mdi:thermometer
     variables:
@@ -423,9 +530,6 @@ button_card_templates:
       ]]]
     styles:
       card:
-        - padding: 4px
-        - height: 70px
-        - border-radius: 12px
         - background-repeat: no-repeat
         - background-size: 100% 30%, 100% 40%, 100% 30%
         - background-position: bottom, center, top
@@ -451,8 +555,8 @@ button_card_templates:
               // Farbe pro Sensor
               const colors = sensors.map(id =>
                 states[id]?.state === 'on'
-                  ? 'rgba(0,180,0,1)'   // aktiv → grün
-                  : 'rgba(200,0,0,1)'   // inaktiv → rot
+                  ? 'rgba(140,140,140,1)'   // aktiv → grün
+                  : 'rgba(140,140,140,0.1)'   // inaktiv → rot
               );
 
               // Zwischen-Fades (20% transparent)
@@ -470,12 +574,7 @@ button_card_templates:
               return `linear-gradient(to right, ${parts.join(',')})`;
             ]]]
       name:
-        - font-size: 14px
-        - font-weight: bold
         - align-self: center
-      icon:
-        - width: 22px
-        - height: 22px
     tap_action:
       action: fire-dom-event
       browser_mod:
@@ -492,6 +591,126 @@ button_card_templates:
               - switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_4
               - switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_5
               - switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_6
+  wlt_status_percent:
+    template: wlt_status_base
+    styles:
+      icon:
+        - color: |
+            [[[
+              const v = Number(entity.state);
+              if (isNaN(v)) return 'rgba(160,160,160,0.8)';
+              if (v > 60) return 'rgb(0,200,0)';
+              if (v > 30) return 'rgb(255,180,0)';
+              return 'rgb(200,0,0)';
+            ]]]
+  wlt_status_signal:
+    template: wlt_status_base
+    styles:
+      icon:
+        - color: |
+            [[[
+              const v = Number(entity.state);
+              if (isNaN(v)) return 'rgba(160,160,160,0.8)';
+              if (v > -60) return 'rgb(0,200,0)';
+              if (v > -75) return 'rgb(255,180,0)';
+              return 'rgb(200,0,0)';
+            ]]]
+  wlt_status_presence:
+    template: wlt_status_base
+    styles:
+      icon:
+        - color: |
+            [[[
+              const v = entity.state;
+              if (!v || v === 'unavailable' || v === 'unknown')
+                return 'rgb(200,0,0)';
+              if (v === 'standby')
+                return 'rgb(255,180,0)';
+              return 'rgb(0,200,0)';
+            ]]]
+  wlt_status_charge:
+    template: wlt_status_base
+    styles:
+      icon:
+        - color: |
+            [[[
+              const charging = states['sensor.wlanthermo_ladevorgang_batterie']?.state;
+              const soc = Number(states['sensor.wlanthermo_batteriestand']?.state ?? 0);
+
+              if (['true','on','online','connected','True','1'].includes(charging))
+                return 'rgb(0,200,0)';            // charging
+
+              if (['false','off','False','0'].includes(charging) && soc === 100)
+                return 'rgb(0,150,255)';          // plugged, full
+
+              if (['false','off','False','0'].includes(charging))
+                return 'rgb(200,200,0)';          // battery only
+
+              return 'rgb(150,150,150)';          // unknown
+            ]]]
+  wlt_status_info:
+    template: wlt_status_base
+    styles:
+      icon:
+        - color: |
+            [[[
+              const v = entity.state;
+              if (v === 'unavailable' || v === 'unknown')
+                return 'rgba(160,160,160,0.8)';
+
+              if (['on','true','connected','verbunden'].includes(v))
+                return 'rgb(0,200,0)';
+
+              if (['off','false','disconnected','getrennt'].includes(v))
+                return 'rgb(255,0,0)';
+
+              if (['standby'].includes(v))
+                return 'rgb(255,180,0)';
+
+              return 'rgba(255,255,255,0.9)';
+            ]]]
+  wlt_cloud_button:
+    template: wlt_status_info
+    name: |
+      [[[
+        return "Cloud";
+      ]]]
+    icon: mdi:cloud
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: Cloud Status
+          content:
+            type: entities
+            entities:
+              - button.wlanthermo_iot_cloud_token_neu_generieren
+              - switch.wlanthermo_iot_cloud_upload_aktivieren
+              - sensor.wlanthermo_cloud_link
+  wlt_mqtt_button:
+    template: wlt_status_info
+    name: |
+      [[[
+        return "MQTT";
+      ]]]
+    icon: mdi:satellite-variant
+    tap_action:
+      action: fire-dom-event
+      browser_mod:
+        service: browser_mod.popup
+        data:
+          title: MQTT Status
+          content:
+            type: entities
+            entities:
+              - switch.wlanthermo_iot_mqtt_aktivieren
+              - text.wlanthermo_iot_mqtt_benutzer
+              - text.wlanthermo_iot_mqtt_host
+              - text.wlanthermo_iot_mqtt_passwort
+              - number.wlanthermo_iot_mqtt_port
+              - number.wlanthermo_iot_mqtt_intervall
+              - number.wlanthermo_iot_mqtt_qos
 views:
   - title: WLANThermo
     path: wlanthermo
@@ -570,132 +789,43 @@ views:
                     columns: 4
                     square: false
                     cards:
-                      - type: custom:mushroom-entity-card
+                      - type: custom:button-card
                         entity: sensor.wlanthermo_batteriestand
-                        name: Akku %
+                        name: Akku
                         icon: mdi:battery
-                        card_mod:
-                          style: |
-                            ha-card {
-                              border-radius: 12px;
-                              padding: 8px;
-                              background-color:
-                                {% set v = states('sensor.wlanthermo_batteriestand') | int(default=0) %}
-                                {% if v > 60 %}
-                                  rgba(0,200,0,0.3)
-                                {% elif v > 30 %}
-                                  rgba(255,200,0,0.3)
-                                {% else %}
-                                  rgba(200,0,0,0.3)
-                                {% endif %};
-                            }
-                      - type: custom:mushroom-entity-card
+                        template: wlt_status_charge
+                      - type: custom:button-card
                         entity: sensor.wlanthermo_signalstarke
-                        name: WLAN Signal
+                        name: WLAN
                         icon: mdi:wifi
-                        card_mod:
-                          style: |
-                            ha-card {
-                              border-radius: 12px;
-                              padding: 8px;
-                              background-color:
-                                {% set v = states('sensor.wlanthermo_signalstarke') | int(default=0) %}
-                                {% if v > -60 %}
-                                  rgba(0,200,0,0.3)
-                                {% elif v > -75 %}
-                                  rgba(255,200,0,0.3)
-                                {% else %}
-                                  rgba(200,0,0,0.3)
-                                {% endif %};
-                            }
-                      - type: custom:mushroom-entity-card
+                        template: wlt_status_signal
+                      - type: custom:button-card
                         entity: sensor.wlanthermo_cloud_status
-                        name: Online
-                        icon: mdi:cloud
-                        card_mod:
-                          style: |
-                            ha-card {
-                              border-radius: 12px;
-                              padding: 8px;
-                              background-color:
-                                {% set v = states('sensor.wlanthermo_cloud_status') %}
-                                {% if v == 'verbunden' or v == 'connected' %}
-                                  rgba(0,200,0,0.3)
-                                {% elif v == 'standby' %}
-                                  rgba(255,200,0,0.3)
-                                {% else %}
-                                  rgba(200,0,0,0.3)
-                                {% endif %};
-                            }
-                      - type: custom:mushroom-entity-card
+                        template: wlt_cloud_button
+                      - type: custom:button-card
                         entity: sensor.wlanthermo_system_info
                         name: System Info
                         icon: mdi:cog-outline
-                        card_mod:
-                          style: |
-                            ha-card {
-                              border-radius: 12px;
-                              padding: 8px;
-                            }
-                      - type: custom:mushroom-entity-card
+                        template: wlt_status_info
+                      - type: custom:button-card
                         entity: sensor.wlanthermo_ladevorgang_batterie
                         name: Ladung
                         icon: mdi:power-plug
-                        card_mod:
-                          style: |
-                            ha-card {
-                              border-radius: 12px;
-                              padding: 8px;
-                              background-color:
-                                {% set charging = states('sensor.wlanthermo_ladevorgang_batterie') %}
-                                {% set soc = states('sensor.wlanthermo_batteriestand') | int(0) %}
-                                {% if charging in ['true','on','online','connected','True','1'] %}
-                                  rgba(0,200,0,0.3)     /* charging */
-                                {% elif charging in ['false','off','False','0'] and soc == 100 %}
-                                  rgba(0,150,255,0.3)   /* plugged, full */
-                                {% elif charging in ['false','off','False','0'] %}
-                                  rgba(200,200,0,0.3)   /* battery */
-                                {% else %}
-                                  rgba(150,150,150,0.3)
-                                {% endif %};
-                            }
-                      - type: custom:mushroom-entity-card
-                        entity: sensor.wlanthermo_cloud_link
-                        name: Cloud URL
-                        icon: mdi:web
-                        card_mod:
-                          style: |
-                            ha-card {
-                              border-radius: 12px;
-                              padding: 8px;
-                              background-color:
-                                {% set v = states('sensor.wlanthermo_cloud_link') %}
-                                {% if v and v != 'unavailable' %}
-                                  rgba(0,200,0,0.3)
-                                {% else %}
-                                  rgba(200,0,0,0.3)
-                                {% endif %};
-                            }
-                      - type: custom:mushroom-entity-card
+                        template: wlt_status_info
+                      - type: custom:button-card
+                        entity: switch.wlanthermo_iot_mqtt_aktivieren
+                        name: MQTT
+                        template: wlt_mqtt_button
+                      - type: custom:button-card
                         entity: sensor.wlanthermo_system_zeit
                         name: Zeit
                         icon: mdi:clock
-                        card_mod:
-                          style: |
-                            ha-card {
-                              border-radius: 12px;
-                              padding: 8px;
-                            }
-                      - type: custom:mushroom-entity-card
+                        template: wlt_status_info
+                      - type: custom:button-card
                         entity: sensor.wlanthermo_gerate_info
-                        name: Geräte Info
+                        name: Geräteinfo
                         icon: mdi:devices
-                        card_mod:
-                          style: |
-                            ha-card {
-                              border-radius: 12px;
-                              padding: 8px;
-                            }
+                        template: wlt_status_info
                   - type: custom:auto-entities
                     card:
                       type: grid
