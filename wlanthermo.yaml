@@ -2,6 +2,7 @@ button_card_templates:
   wlt_card_base:
     variables:
       device_name: wlanthermo
+      bt_name: phyrawadv_03c9
     show_icon: true
     show_name: true
     show_state: true
@@ -536,6 +537,7 @@ button_card_templates:
         - background: |
             [[[
               const bt = states['switch.wlanthermo_bluetooth_aktiv']?.state === 'on';
+              const bt_name = variables.bt_name;
 
               // Bluetooth AUS → ganze Karte rot
               if (!bt) {
@@ -544,14 +546,13 @@ button_card_templates:
 
               // Bluetooth AN → Sensor-Felder
               const sensors = [
-                'switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_1',
-                'switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_2',
-                'switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_3',
-                'switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_4',
-                'switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_5',
-                'switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_6'
-              ];
-
+                  `switch.wlanthermo_bluetooth_${bt_name}_fuhler_1`,
+                  `switch.wlanthermo_bluetooth_${bt_name}_fuhler_2`,
+                  `switch.wlanthermo_bluetooth_${bt_name}_fuhler_3`,
+                  `switch.wlanthermo_bluetooth_${bt_name}_fuhler_4`,
+                  `switch.wlanthermo_bluetooth_${bt_name}_fuhler_5`,
+                  `switch.wlanthermo_bluetooth_${bt_name}_fuhler_6`,
+                ];
               // Farbe pro Sensor
               const colors = sensors.map(id =>
                 states[id]?.state === 'on'
@@ -585,12 +586,30 @@ button_card_templates:
             type: entities
             entities:
               - switch.wlanthermo_bluetooth_aktiv
-              - switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_1
-              - switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_2
-              - switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_3
-              - switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_4
-              - switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_5
-              - switch.wlanthermo_bluetooth_phyrawadv_03c9_fuhler_6
+              - |
+                [[[
+                  return `switch.wlanthermo_bluetooth_${variables.bt_name}_fuhler_1`;
+                ]]]
+              - |
+                [[[
+                  return `switch.wlanthermo_bluetooth_${variables.bt_name}_fuhler_2`;
+                ]]]
+              - |
+                [[[
+                  return `switch.wlanthermo_bluetooth_${variables.bt_name}_fuhler_3`;
+                ]]]
+              - |
+                [[[
+                  return `switch.wlanthermo_bluetooth_${variables.bt_name}_fuhler_4`;
+                ]]]
+              - |
+                [[[
+                  return `switch.wlanthermo_bluetooth_${variables.bt_name}_fuhler_5`;
+                ]]]
+              - |
+                [[[
+                  return `switch.wlanthermo_bluetooth_${variables.bt_name}_fuhler_6`;
+                ]]]
   wlt_status_percent:
     template: wlt_status_base
     styles:
