@@ -1,4 +1,32 @@
+
 # Changelog
+
+## [0.3.1] - 2026-02-06
+
+### Added
+- Edit fields for IoT settings and synchronization with device.
+
+## [0.3.0] - 2026-02-05
+
+### Added
+- Notification settings to configuration.
+- Reload Integration button to discover new Bluetooth sensors.
+- Bluetooth handling and related integration features.
+- Channel temperature attribute ID for automatic entity sorting.
+- New PID profile fields in configuration.
+
+### Changed
+- Updated dashboards for Bluetooth and notifications.
+- Improved code quality across multiple components.
+- Improved switch entity naming to avoid duplicate names.
+- Updated channel naming in configuration files.
+- Updated and extended translations (English and German).
+
+### Fixed
+- Fixed priority availability on Pushover notifications.
+- Fixed test icon for Telegram.
+- Fixed and extended translation issues.
+- Fixed setting name in text entity.
 
 ## [0.2.3] - 2026-01-27
 
