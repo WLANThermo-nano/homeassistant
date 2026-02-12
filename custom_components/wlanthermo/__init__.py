@@ -103,8 +103,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 					api._consecutive_failures,
 					api._max_failures,
 				)
-				if api._consecutive_failures < api._max_failures:
-					return coordinator.data
+				# if api._consecutive_failures < api._max_failures:
+				# 	return coordinator.data
 				raise UpdateFailed("WLANThermo offline (no /data)")
 			api._consecutive_failures = 0
 			settings = None
@@ -149,6 +149,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 		name="WLANThermoData",
 		update_method=async_update_data,
 		update_interval=timedelta(seconds=scan_interval),
+		always_update=True,
 	)
 	coordinator.api = api
 	await coordinator.async_config_entry_first_refresh()
@@ -163,18 +164,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 	}
 	hass.data[DOMAIN][entry.entry_id] = entry_data
 	# If device is offline at setup → do NOT load platforms.
-	if not coordinator.last_update_success:
-		async def _async_start_platforms() -> None:
-			"""
-			Listener to start platforms when device comes online.
-			Returns:
-				None.
-			"""
-			if coordinator.last_update_success:
-				await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-		coordinator.async_add_listener(_async_start_platforms)
-	else:
-		await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+	# if not coordinator.last_update_success:
+	# 	async def _async_start_platforms() -> None:
+	# 		"""
+	# 		Listener to start platforms when device comes online.
+	# 		Returns:
+	# 			None.
+	# 		"""
+	# 		if coordinator.last_update_success:
+	# 			await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+	# 	coordinator.async_add_listener(_async_start_platforms)
+	# else:
+	# 	await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+	await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
 	entry.async_on_unload(
 		entry.add_update_listener(async_reload_entry)
 	)
