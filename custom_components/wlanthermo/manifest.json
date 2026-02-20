@@ -3,6 +3,7 @@
   "name": "WLANThermo",
   "version": "0.3.1",
   "documentation": "https://github.com/WLANThermo-nano/homeassistant",
+  "issue_tracker": "https://github.com/WLANThermo-nano/homeassistant/issues",
   "requirements": [],
   "codeowners": ["@MStapelfeldt"],
   "config_flow": true,
