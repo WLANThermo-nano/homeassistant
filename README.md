@@ -10,6 +10,9 @@
 
 ---
 
+# Readme auf deutsch unter [README.de.md](https://github.com/WLANThermo-nano/homeassistant/blob/master/README.de.md)
+
+
 ## Notice & Disclaimer
 
 This is a **community integration** for WLANThermo devices.  
