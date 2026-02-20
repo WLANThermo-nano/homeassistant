@@ -55,10 +55,10 @@ PITMASTER_NUMBER_FIELDS = [
 ]
 ICON_MAP = {
     "jp": "mdi:rocket-launch",
-    "DCmmin": "mdi:cosine-wave",
-    "DCmmax": "mdi:sine-wave",
-    "SPmin": "mdi:axis-arrow",
-    "SPmax": "mdi:axis-arrow",
+    "dcmmin": "mdi:cosine-wave",
+    "dcmmax": "mdi:sine-wave",
+    "spmin": "mdi:axis-arrow",
+    "spmax": "mdi:axis-arrow",
     "link": "mdi:link-variant",
 }
 
@@ -84,10 +84,10 @@ async def async_setup_entry(hass: Any, config_entry: Any, async_add_entities: An
     # field, min, max
     PID_NUMBER_FIELDS = [
         ("jp", 0, 100),
-        ("DCmmin", 0, 100),
-        ("DCmmax", 0, 100),
-        ("SPmin", 0, 3000),
-        ("SPmax", 0, 3000),
+        ("dcmmin", 0, 100),
+        ("dcmmax", 0, 100),
+        ("spmin", 0, 3000),
+        ("spmax", 0, 3000),
     ]
     async def _async_discover_numbers() -> None:
         """
