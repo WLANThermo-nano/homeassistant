@@ -191,9 +191,13 @@ class WlanthermoChannelNumber(CoordinatorEntity, NumberEntity):
         self._attr_native_min_value = field["min"]
         self._attr_native_max_value = field["max"]
         self._attr_native_step = field["step"]
-        self._attr_native_unit_of_measurement = field["unit"]
         self._attr_device_info = entry_data["device_info"]
-
+@property
+def native_unit_of_measurement(self) -> str:
+    if self._field["unit"] != "°C":
+        return self._field["unit"]
+    system = getattr(self.coordinator.data, "system", None)
+    return "°F" if getattr(system, "unit", None) == "F" else "°C"
 
     def _get_channel(self) -> Any:
         """
@@ -282,9 +286,14 @@ class WlanthermoPitmasterNumber(CoordinatorEntity, NumberEntity):
         self._attr_native_min_value = field["min"]
         self._attr_native_max_value = field["max"]
         self._attr_native_step = field["step"]
-        self._attr_native_unit_of_measurement = field["unit"]
         self._attr_device_info = entry_data["device_info"]
 
+@property
+def native_unit_of_measurement(self) -> str:
+    if self._field["unit"] != "°C":
+        return self._field["unit"]
+    system = getattr(self.coordinator.data, "system", None)
+    return "°F" if getattr(system, "unit", None) == "F" else "°C"    
 
     def _get_pitmaster(self) -> Any:
         """
