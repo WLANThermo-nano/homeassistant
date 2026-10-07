@@ -142,9 +142,16 @@ class WlanthermoChannelTemperatureSensor(CoordinatorEntity, SensorEntity):
         self._attr_icon = "mdi:thermometer"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_device_info = entry_data["device_info"]
         self._attr_extra_state_attributes = { "id": channel_number, }
+    @property
+    def native_unit_of_measurement(self) -> str:
+        system = getattr(self.coordinator.data, "system", None)
+        return (
+            UnitOfTemperature.FAHRENHEIT
+            if getattr(system, "unit", None) == "F"
+            else UnitOfTemperature.CELSIUS
+        )
 
     def _get_channel(self) -> Any:
         """
